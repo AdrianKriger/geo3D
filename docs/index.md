@@ -40,13 +40,13 @@ The purpose of this work aims to go beyond traditional mapping and enrich high s
     <th align="center"><a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a> </th>
   </tr>
   <tr>
-    <td align="center"> If you need a topologically correct LoD1 3D City Model<sup>*</sup> <br> please choose <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb">osm_LoD1_3DCityModel-walkthrough</a> <br> followed by <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb">CityJSONspatialDataScience.ipynb </a> </td>
+    <td align="center"> If you need a topologically correct LoD1 3D City Model <br> please choose <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb">osm_LoD1_3DCityModel-walkthrough</a> <br> followed by <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb">CityJSONspatialDataScience.ipynb </a> </td>
     <td align="center"> Please choose <a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a> <br> if you do not need a LoD1 3D City Model. </td>
   </tr>
 </table>
-
-<sup>* ***the goal is a model that conforms to the ISO 19107 standard [connecting and planar surfaces, correct orientation of the surfaces and watertight volumes] I have not tested this for all possibilities. If the result you achieve is not; you are welcome to raise an [issue](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/issues). I depend on you to help me improve.*** 
 ---
-The primary product is a topologically correct Level of Detail 1 (LoD1) 3D City Model. Secondary products include an application of spatial data science and an HTML-based visualization. Our mission is to empower high school learning and community engagement by fostering effective communication and advocacy at the grassroots level.
+The primary product is a topologically correct Level of Detail 1 (LoD1) 3D City Model<sup>*</sup>. Secondary products include an application of spatial data science and an HTML-based visualization. Our mission is to empower high school learning and community engagement by fostering effective communication and advocacy at the grassroots level.
  
 Please see the [Discussion](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/discussions/22).
+
+<sup>* ***the goal is a model that conforms to the ISO 19107 standard [connecting and planar surfaces, correct orientation of the surfaces and watertight volumes] I have not tested this for all possibilities. If the result you achieve is not; you are welcome to raise an [issue](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/issues). I depend on you to help me improve.*** 
