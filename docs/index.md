@@ -42,7 +42,7 @@ It takes 2D osm vector contributions (building outlines) with [`building:level`]
     <th align="center"><a href="https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/districts">District</a> <em><strong></strong></em></th>
   </tr>
   <tr>
-    <td align="center"> If you need a topologically correct LoD1 3D City Model please choose <a href="https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/village_campus">village/campus</a> </td>
+    <td align="center"> If you need a topologically correct LoD1 3D City Model please choose <a href="https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb">osm_LoD1_3DCityModel-walkthrough</a> </td>
     <td align="center"> Please choose <a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a> if you do not need a LoD1 3D City Model. </td>
   </tr>
 </table>
