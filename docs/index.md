@@ -49,7 +49,7 @@ It takes 2D osm vector contributions (building outlines) with [`building:level`]
 
 ---
 
-The purpose of this work seeks to expand the core TeachOSM modules, going beyond traditional mapping, to enrich high school learning through a constructivist approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
+The purpose of this work seeks to expand the core [TeachOSM](https://teachosm.org) modules, going beyond traditional mapping, to enrich high school learning through a constructivist approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
 
 The primary product is a topologically correct Level of Detail 1 (LoD1) 3D City Model. Secondary products include an application of spatial data science and an HTML-based visualization. Our mission is to empower high school learning and community engagement by fostering effective communication and advocacy at the grassroots level.
  
