@@ -14,9 +14,7 @@ LoD1 3D City Models for High School Learning
 
 The tool extends the core [TeachOSM](https://teachosm.org) (Module 1-4) curriculum and is ***meant for communities with a population of 10 000 or less***.
 
-[`geo3D`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) creates a Level-of-Detail 1 (LoD1) 3D City Model (buildings and terrain) from [OpenStreetMap (osm) contributions](https://www.openstreetmap.org/about) with elevation from a raster Digital Elevation Model (DEM). The workflow aims for simplicity.  
-
-It takes 2D osm vector contributions (building outlines) with [`building:level`](https://wiki.openstreetmap.org/wiki/Key:building:levels) tagged and extrudes the polygon from the DEM (terrain).
+The purpose of this work aims to go beyond traditional mapping and enrich high school learning through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
 
  <figure><center>
   <img src="{{site.baseurl | prepend: site.url}}/img/CityJSON_Ninja_cputb.png" style="width: 800px; height: 400px; border: 0px">
@@ -42,15 +40,12 @@ It takes 2D osm vector contributions (building outlines) with [`building:level`]
     <th align="center"><a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a> <em><strong></strong></em></th>
   </tr>
   <tr>
-    <td align="center"> If you need a topologically correct LoD1 3D City Model <br> please choose <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb">osm_LoD1_3DCityModel-walkthrough</a> <br> followed by <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb">CityJSONspatialDataScience.ipynb</a> </td>
-    <td align="center"> Please choose <a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a>  <br> if you do not need a LoD1 3D City Model. </td>
+    <td align="center"> If you need a topologically correct LoD1 3D City Model <br> please choose <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb">osm_LoD1_3DCityModel-walkthrough</a> <br> followed by <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb">CityJSONspatialDataScience.ipynb</a> <br><br> This workflow creates a Level-of-Detail 1 (LoD1) 3D City Model (buildings and terrain) from [OpenStreetMap (osm) contributions](https://www.openstreetmap.org/about) with elevation from a raster Digital Elevation Model (DEM) </td>
+    <td align="center"> Please choose <a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a> <br> if you do not need a LoD1 3D City Model. </td>
   </tr>
 </table>
 
 ---
-
-The purpose of this work seeks to expand the core [TeachOSM](https://teachosm.org) modules, going beyond traditional mapping, to enrich high school learning through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
-
 The primary product is a topologically correct Level of Detail 1 (LoD1) 3D City Model. Secondary products include an application of spatial data science and an HTML-based visualization. Our mission is to empower high school learning and community engagement by fostering effective communication and advocacy at the grassroots level.
  
 Please see the [Discussion](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/discussions/22).
