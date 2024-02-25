@@ -25,7 +25,7 @@ To produce a City Model; necessary information that defines your area-of-interes
     "FocusArea": "Mamre",
     "osm_type": "relation",
  ```
-AN aoi is defined `Large area -> focus area` or `State (Province) -> village / campus`. The area must exist in osm as either a [way or relation](https://wiki.openstreetmap.org/wiki/Elements). <!--A number of variations are available as [Examples](https://adriankriger.github.io/osm_LoD1_3DCityModel/docs/docs/examples)-->
+An aoi is defined `Large area -> focus area` or `State (Province) -> village / campus`. The area must exist in osm as either a [way or relation](https://wiki.openstreetmap.org/wiki/Elements). <!--A number of variations are available as [Examples](https://adriankriger.github.io/osm_LoD1_3DCityModel/docs/docs/examples)-->
 
 <!--#### district
 ```json
