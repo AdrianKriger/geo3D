@@ -67,8 +67,8 @@ heading_anchors: true
 
 # Aux links for the upper right navigation
 aux_links:
-  "LoD1 City Model on GitHub":
-    - "//github.com/AdrianKriger/osm_LoD1_3DCityModel"
+  "geo3D on GitHub":
+    - "//github.com/AdrianKriger/geo3D"
 
 # Makes Aux links open in a new tab. Default is false
 aux_links_new_tab: false
@@ -84,7 +84,7 @@ nav_sort: case_sensitive # Capital letters sorted before lowercase
 back_to_top: true
 back_to_top_text: "Back to top"
 
-footer_content: "Copyright &copy; 2021-2024 A.R. Kriger. Distributed by an <a href=\"https://github.com/AdrianKriger/osm_LoD1_3DCityModel/blob/main/LICENSE.txt\">MIT license.</a>"
+footer_content: "Copyright &copy; 2024-2024 A.R. Kriger. Distributed by an <a href=\"https://github.com/AdrianKriger/geo3D/blob/main/LICENSE.txt\">MIT license.</a>"
 
 # Footer last edited timestamp
 last_edit_timestamp: true # show or hide edit time - page must have `last_modified_date` defined in the frontmatter
@@ -95,7 +95,7 @@ last_edit_time_format: "%b %e %Y at %I:%M %p" # uses ruby's time format: https:/
 # Footer "Edit this page on GitHub" link text
 gh_edit_link: true # show or hide edit this page link
 gh_edit_link_text: "See something wrong or unclear? Help make these docs better. Edit this page on GitHub"
-gh_edit_repository: "https://github.com/AdrianKriger/osm_LoD1_3DCityModel" # the github URL for your repo
+gh_edit_repository: "https://github.com/AdrianKriger/geo3D" # the github URL for your repo
 #gh_edit_branch: "master" # the branch that your docs is served from
 gh_edit_branch: "main" # the branch that your docs is served from
 gh_edit_source: docs # the source that your files originate from
