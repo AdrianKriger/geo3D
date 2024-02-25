@@ -27,7 +27,7 @@ nav_order: 2
   </tr>
   <tr>
     <td align="center"> This workflow creates a LoD1 3D City Model <br>(buildings and terrain) from <br> <a href="https://www.openstreetmap.org/about">OpenStreetMap (osm) contributions</a> <br> with elevation from a raster Digital Elevation Model (DEM) format </td>
-    <td lign="center"> This strategy creates a basic 3D visualization </td>
+    <td align="center"> This strategy creates a basic 3D visualization </td>
   </tr>
 </table>
 
