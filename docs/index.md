@@ -7,7 +7,7 @@ permalink: /
 ---
 
 # geo3D. 
-LoD1 3D City Models for High School Learning  
+3D City Models for High School Learning  
 {: .fs-9 }
 
 [`geo3D`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) is a [python-based](https://en.wikipedia.org/wiki/Python_(programming_language)) workflow to facilitate high school learning. 
