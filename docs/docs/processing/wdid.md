@@ -31,12 +31,12 @@ Depending of the processing strategy the needs are slightly different.
     <th align="center"><a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly </a> </th>
   </tr>
   <tr>
-    <td align="center"> With the <a href="https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb">osm_LoD1_3DCityModel</a> <br /> a raster DEM is necessary. <a href="https://github.com/AdrianKriger/osm_LoD1_3DCityModel">osm_LoD1_3DModel</a> will call <a href="https://wiki.openstreetmap.org/wiki/Overpass_turbo">overpass-turbo</a> for the <a href="https://www.openstreetmap.org/about">osm contributions</a></td>
-    <td style="background: repeating-linear-gradient(-45deg, transparent, transparent 5px, rgba(0,0,0,0.2) 5px, rgba(0,0,0,0.2) 10px); text-align: center; border: 1px solid black;"> <a href="https://github.com/AdrianKriger/osm_LoD1_3DCityModel">osm_LoD1_3DModel</a> will access <a href="https://www.openstreetmap.org/about">osm contributions</a> through <a href="https://pyrosm.readthedocs.io/en/latest/index.html">Pyrosm</a><br /><br />Due to the substantial amounts of data in the osm.pbf extract; <a href="https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/districts">Districts</a> requires a bit more.<br /><br /> <a href="https://github.com/AdrianKriger/osm_LoD1_3DCityModel">osm_LoD1_3DModel</a> uses <a href="https://wiki.openstreetmap.org/wiki/Osmconvert">osmconvert</a> to make the osm.pbf more manageable. <br />It does this through selecting only the data from a specific area. <br /><br /> <a href="https://wiki.openstreetmap.org/wiki/Osmosis/Polygon_Filter_File_Format">osm.poly</a> files, that cover <a href="https://github.com/JamesChevalier/cities">various regions around the world</a>, are available for this very purpose.</td>
+    <td align="center"> This workflow creates a LoD1 3D City Model <br>(buildings and terrain) from <br> <a href="https://www.openstreetmap.org/about">OpenStreetMap (osm) contributions</a> <br> with elevation from a raster Digital Elevation Model (DEM) format </td>
+    <td align="center"> This strategy creates a basic 3D visualization </td>
   </tr>
   <tr>
-    <td align="center">raster DEM</td>
-    <tdalign="center"> nothing is necessary </td>
+    <td align="center"> raster DEM </td>
+    <td align="center"> nothing is necessary </td>
   </tr>
 </table>
 
