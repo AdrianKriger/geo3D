@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Processing Strategies
-parent: osm_LoD1_3DCityModel
+parent: geo3D
 nav_order: 2
 ---
 
