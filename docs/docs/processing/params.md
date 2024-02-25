@@ -71,7 +71,7 @@ Coordinate Reference System (crs) of the City Model. The workflow will project t
 
 #### NoData
 
-While [village/campus](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/village_campus) and [districts](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/districts) `interactive.ipynb` should execute successfully in any area; the [CityJSON](https://www.cityjson.org/) will not when an aoi extend's into `NoData` (typically the ocean). This means [these types of areas](https://www.openstreetmap.org/relation/2034620#map=14/-33.9128/18.4430) will fail to produce a LoD1 3D City Model while [these](https://www.openstreetmap.org/way/689159965) will pass. 
+While [`interactive.ipynb`](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) should execute successfully in any area; the [CityJSON](https://www.cityjson.org/) will not when an aoi extend's into `NoData` (typically the ocean). This means [these types of areas](https://www.openstreetmap.org/relation/2034620#map=14/-33.9128/18.4430) will fail to produce a LoD1 3D City Model while [these](https://www.openstreetmap.org/way/689159965) will pass. 
 
 ### CityJSON
 ```json
