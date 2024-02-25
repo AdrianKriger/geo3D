@@ -6,7 +6,7 @@ description: "Level-of-Detail 1 3D City Models for High School Learning."
 permalink: /
 ---
 
-# Level-of-Detail 1 3D City Models for High School Learning
+# geo3D. LoD1 3D City Models for High School Learning
 {: .fs-9 }
 
 [`geo3D`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) is a [python-based](https://en.wikipedia.org/wiki/Python_(programming_language)) workflow to facilitate high school learning. The tool extends the core [TeachOSM](https://teachosm.org) (Module 1-4) curriculum and is ***meant for communities with a population of 10 000 or less***.
