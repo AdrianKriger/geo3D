@@ -1,7 +1,7 @@
 ---
 layout: default
 title: What does it do?
-parent: osm_LoD1_3DCityModel
+parent: geo3D
 nav_order: 1
 ---
 
@@ -59,7 +59,7 @@ Solid objects are walls, floors and rooves stored as rectangular faces. In the [
 
 ### Interactive Visualisation with Spatial Data Science
 
-A dynamic visualisation and spatial analysis is possible through a Jupyter notebook. [Interactive Visualization](https://adriankriger.github.io/osm_LoD1_3DCityModel/docs/interactive/) discusses this further.
+A dynamic visualisation and spatial analysis is possible. [Interactive Visualization](https://adriankriger.github.io/osm_LoD1_3DCityModel/docs/interactive/) discusses this further.
 
 ## Is it useful?
 
