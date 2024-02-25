@@ -2,14 +2,16 @@
 layout: default
 title: Home
 nav_order: 1
-description: "A python-based workflow for creation of Level-of-Detail 1 3D City Models."
+description: "Level-of-Detail 1 3D City Models for High School Learning."
 permalink: /
 ---
 
-# Level-of-Detail 1 (LoD1) 3D City Models
+# geo3D
 {: .fs-9 }
 
-[`osm_LoD1_3DCityModel`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) is a [python-based](https://en.wikipedia.org/wiki/Python_(programming_language)) workflow for the creation of LoD1 3D City Models (buildings and terrain) from [OpenStreetMap (osm) contributions](https://www.openstreetmap.org/about) with elevation from a raster Digital Elevation Model (DEM). The workflow aims for simplicity.  
+[`geo3D`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) is a [python-based](https://en.wikipedia.org/wiki/Python_(programming_language)) workflow to facilitate high school learning. The tool extends the core [TeachOSM](https://teachosm.org) (Module 1-4) curriculum and is ***meant for communities with a population of 10 000 or less***.
+
+[`geo3D`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) creates a Level-of-Detail 1 (LoD1) 3D City Model (buildings and terrain) from [OpenStreetMap (osm) contributions](https://www.openstreetmap.org/about) with elevation from a raster Digital Elevation Model (DEM). The workflow aims for simplicity.  
 
 It takes 2D osm vector contributions (building outlines) with [`building:level`](https://wiki.openstreetmap.org/wiki/Key:building:levels) tagged and extrudes the polygon from the DEM (terrain).
 
@@ -27,9 +29,9 @@ It takes 2D osm vector contributions (building outlines) with [`building:level`]
 
 <p align="center"><b>There are two procesing strategies</b></p>
 
-<!--| [Village/Campus](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/village_campus) | [District](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/districts) *[this is on hold]*|
+<!--| [osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) | [InteractivateOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) |
 | :-----: | :-----: |
-| If your Area-of-Interest (aoi) has a population of 10 000 or less you are welcome to choose [village/campus](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/village_campus)| Please choose [District](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/districts) should you aoi have a population of more than 10 000|-->
+| If you need a topologically correct LoD1 3D City Model please choose [osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) | Please choose [InteractiveOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) if you do not need a LoD1 3D City Model |-->
 
 <table>
   <tr>
@@ -44,9 +46,10 @@ It takes 2D osm vector contributions (building outlines) with [`building:level`]
 
 ---
 
-The purpose of this work is to provide resource constrained communities with an array of high-quality 3D products---at a much lower cost. Its participatory nature seeks to enable effective communication, community advocacy and facilitate broadly-based decision-making processes at a grassroots level. 
+The purpose of this work seeks to expand the core TeachOSM modules, going beyond traditional mapping, to enrich high school learning through a constructivist approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
 
-The tool can also be customized to meet basic education (citizen science, geography and coding) needs. 
+The primary product is a topologically correct Level of Detail 1 (LoD1) 3D City Model. Secondary products include an application of spatial data science and an HTML-based visualization. Our mission is to empower high school learning and community engagement by fostering effective communication and advocacy at the grassroots level.
+ 
 Please see the [Discussion](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/discussions/22).
 
 ---
