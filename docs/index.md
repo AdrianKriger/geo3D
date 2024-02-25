@@ -32,7 +32,7 @@ The purpose of this work aims to go beyond traditional mapping and enrich high s
 
 <!--| [osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) | [InteractivateOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) |
 | :-----: | :-----: |
-| If you need a topologically correct LoD1 3D City Model<sup>*</sup> please choose [osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) | Please choose [InteractiveOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) if you do not need a LoD1 3D City Model |-->
+| If you need a topologically correct LoD1 3D City Model please choose [osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) | Please choose [InteractiveOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) if you do not need a LoD1 3D City Model |-->
 
 <table>
   <tr>
@@ -40,7 +40,7 @@ The purpose of this work aims to go beyond traditional mapping and enrich high s
     <th align="center"><a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a> </th>
   </tr>
   <tr>
-    <td align="center"> If you need a topologically correct LoD1 3D City Model <br> please choose <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb">osm_LoD1_3DCityModel-walkthrough</a> <br> followed by <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb">CityJSONspatialDataScience.ipynb </a> </td>
+    <td align="center"> If you need a topologically correct LoD1 3D City Model<sup>*</sup> <br> please choose <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb">osm_LoD1_3DCityModel-walkthrough</a> <br> followed by <br> <a href="https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb">CityJSONspatialDataScience.ipynb </a> </td>
     <td align="center"> Please choose <a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a> <br> if you do not need a LoD1 3D City Model. </td>
   </tr>
 </table>
