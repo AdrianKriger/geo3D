@@ -8,7 +8,7 @@ nav_order: 4
 {: .no_toc }
 
 
-The example `iframe` below is the product of iether [interactiveOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) or [osm_LoD1_3DCityModel-walkthrough](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) and aims to serve tool to facilitate community engagement and understanding.  
+The example `iframe` below is the product of iether [interactiveOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) or [osm_LoD1_3DCityModel-walkthrough](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) and serves to facilitate engagement and understanding at a neighbourhood level. 
 
 Building stock is differentiated through color. A school, housing, retail, healthcare and community focused facilities are easily identified while the tooltips highlight the underlying data. Additional features unique to an aoi can also be included. Here farmland, streams, recreational spaces and bus rapid transit routes have been added *- you are thus limited only through data and your imagination*. <!-- {: .fs-6 .fw-300 } -->
 
