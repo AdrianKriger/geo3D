@@ -9,7 +9,7 @@ nav_order: 5
 
 The [Jupyter](https://eis n.wikipedia.org/wiki/Project_Jupyter#Jupyter_Notebook) environment allows for extensive customization and deep analysis through *spatial data science*.
 
-To highlight a real-world application of an [ISO 19107](https://www.iso.org/standard/66175.html) compliant city model; [CityJSONspatialDataScience.ipynb](https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb) illustrates a example of population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
+[geo3D](https://github.com/AdrianKriger/geo3D/tree/main) illustrates a example of population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
 
 While the prefered process would proceed: 
 
