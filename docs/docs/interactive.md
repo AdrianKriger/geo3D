@@ -10,7 +10,7 @@ nav_order: 4
 
 The [Jupyter](https://eis n.wikipedia.org/wiki/Project_Jupyter#Jupyter_Notebook) environment allows for extensive customization and deep analysis through *spatial data science*.
 
-The example `iframe` below is the product of [village/campus interactiveOnly.ipynb](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/blob/main/village_campus/interactiveOnly.ipynb). Building stock is differentiated through color. A school, housing, retail, healthcare and community focused facilities are easily identified while the tooltips highlight the underlying data. Additional features unique to an aoi can also be included. Here farmland, streams, recreational spaces and bus rapid transit routes have been added *- you are thus limited only through data and your imagination*. <!-- {: .fs-6 .fw-300 } -->
+The example `iframe` below is the product iether [interactiveOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) or [osm_LoD1_3DCityModel-walkthrough](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb). Building stock is differentiated through color. A school, housing, retail, healthcare and community focused facilities are easily identified while the tooltips highlight the underlying data. Additional features unique to an aoi can also be included. Here farmland, streams, recreational spaces and bus rapid transit routes have been added *- you are thus limited only through data and your imagination*. <!-- {: .fs-6 .fw-300 } -->
 
 **To navigate on a laptop without a mouse**:
 
