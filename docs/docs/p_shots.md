@@ -13,4 +13,4 @@ Its [paper](https://joss.theoj.org/papers/10.21105/joss.02866): `Ledoux H, Bilje
 
 **Parting Shots**
 
-With regard to village/campus; [BlenderGIS](https://github.com/domlysz/BlenderGIS) and [QGIS](https://qgis.org/en/site/) offers some (if not all and more) of this functionality while [Cesium](https://cesium.com/), [mapbox](https://www.mapbox.com/), [deck.gl](https://deck.gl/) and [3dbuildings](https://3dbuildings.com/) will stream 3D tiles to your hearts content.
+[BlenderGIS](https://github.com/domlysz/BlenderGIS) and [QGIS](https://qgis.org/en/site/) offers some (if not all and more) of this functionality while [Cesium](https://cesium.com/), [mapbox](https://www.mapbox.com/), [deck.gl](https://deck.gl/) and [3dbuildings](https://3dbuildings.com/) will stream 3D tiles to your hearts content.
