@@ -7,9 +7,7 @@ nav_order: 5
 # Spatial Data Science
 {: .no_toc }
 
-The [Jupyter](https://eis n.wikipedia.org/wiki/Project_Jupyter#Jupyter_Notebook) environment allows for extensive customization and deep analysis through *spatial data science*.
-
-[geo3D](https://github.com/AdrianKriger/geo3D/tree/main) illustrates a example of population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
+The [Jupyter](https://eis n.wikipedia.org/wiki/Project_Jupyter#Jupyter_Notebook) environment allows for extensive customization and deep analysis through *spatial data science*. [geo3D](https://github.com/AdrianKriger/geo3D/tree/main) executes an example of population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
 
 While the prefered process would proceed: 
 
