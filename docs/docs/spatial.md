@@ -9,7 +9,7 @@ nav_order: 5
 
 The [Jupyter](https://eis n.wikipedia.org/wiki/Project_Jupyter#Jupyter_Notebook) environment allows for extensive customization and deep analysis through *spatial data science*.
 
-To highlight a real-world application of an [ISO 19107](https://www.iso.org/standard/66175.html) compliant city model; [CityJSONspatialDataScience.ipynb](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/blob/main/village_campus/CityJSONspatialDataScience.ipynb) illustrates a example of population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
+To highlight a real-world application of an [ISO 19107](https://www.iso.org/standard/66175.html) compliant city model; [CityJSONspatialDataScience.ipynb](https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb) illustrates a example of population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
 
 While the prefered process would proceed: 
 
@@ -17,12 +17,12 @@ While the prefered process would proceed:
   <img src="{{site.baseurl | prepend: site.url}}/img/flow1.png" style="width: 800px; height: 300px; border: 0px">
 </center></figure> 
 
-[osm_LoD1_3DCityModel](https://adriankriger.github.io/osm_LoD1_3DCityModel/) -> [Spatial Data Science](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/blob/main/village_campus/CityJSONspatialDataScience.ipynb) -> Interactive visualization; an alternate does exist. 
+[osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb)) -> [Spatial Data Science](https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb) -> Interactive visualization; an alternate does exist. 
 
-[interactiveOnly.ipynb](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/blob/main/village_campus/interactiveOnly.ipynb) will create a basic 3D model visualisation followed by population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
+[interactiveOnly.ipynb](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) will create a basic 3D model visualisation followed by population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
 
 <figure><center>
-  <img src="{{site.baseurl | prepend: site.url}}/img/flow2.png" style="width: 800px; height: 300px; border: 0px">
+  <img src="{{site.baseurl | prepend: site.url}}/img/flow2.png" style="width: 500px; height: 250px; border: 0px">
 </center></figure> 
 
 Please consider your needs before executing the solution. We do not want to burden the [OpenStreetMap](https://www.openstreetmap.org/#map=5/-28.676/24.677) server with repeat calls for data. 
