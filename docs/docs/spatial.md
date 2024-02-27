@@ -15,7 +15,7 @@ While the prefered process would proceed:
   <img src="{{site.baseurl | prepend: site.url}}/img/flow1.png" style="width: 800px; height: 300px; border: 0px">
 </center></figure> 
 
-[osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb)) -> [Spatial Data Science](https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb); an alternate does exist. 
+[osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) -> [Spatial Data Science](https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb); an alternate does exist. 
 
 [interactiveOnly.ipynb](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) will create a basic 3D model visualisation followed by population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full).
 
