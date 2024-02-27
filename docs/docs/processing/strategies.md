@@ -26,7 +26,7 @@ nav_order: 2
     <td align="center"> Please choose <a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly</a> <br> if you do not need a LoD1 3D City Model.     </td>
   </tr>
   <tr>
-    <td align="center"> <strong>Product:</strong> An [Open Geospatial Consortium (OGC)]() standard LoD1 3D model adhering to the International Standards Organization (ISO19107) rules. <br><br> These siimulation-ready models provide insights for urban planning, resource allocation, and community development with such use cases as estimating noise propogation, energy demand and simulating wind comfort factor. </td>
+    <td align="center"> <strong>Product:</strong> An [Open Geospatial Consortium (OGC)](https://www.ogc.org/standard/citygml/) standard LoD1 3D model adhering to the [International Standards Organization (ISO19107)](https://www.iso.org/standard/66175.html) rules. <br><br> These siimulation-ready models provide insights for urban planning, resource allocation, and community development with such use cases as estimating noise propogation, energy demand and simulating wind comfort factor. </td>
     <td align="center"> <strong>Product:</strong> A 3D HTML-based visualization for user interaction, navigation, and sharing, promoting community engagement and understanding </td>
  </tr>
 </table>
