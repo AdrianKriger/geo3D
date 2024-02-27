@@ -59,7 +59,7 @@ Solid objects are walls, floors and rooves stored as rectangular faces. In the [
 
 ### Interactive Visualisation with Spatial Data Science
 
-A dynamic visualisation and spatial analysis is possible. [Interactive Visualization](https://adriankriger.github.io/geo3D/docs/interactive/) and [Spatial Data Sceince](https://adriankriger.github.io/geo3D/docs/spatial/) discusses this further.
+A dynamic visualisation and spatial analysis is possible. [Interactive Visualization](https://adriankriger.github.io/geo3D/docs/interactive/) and [Spatial Data Science](https://adriankriger.github.io/geo3D/docs/spatial/) discusses this further.
 
 ## Is it useful?
 
