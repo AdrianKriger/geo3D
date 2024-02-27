@@ -42,7 +42,7 @@ Before a City Model is created the user will be presented with a basic `matplotl
   <figcaption>Fig 2. - left illustrates an area with no topological challenges . - right shows the same area with errors that need investigation.</figcaption>
 </center></figure>
 
-Generally the root of these challenges are buildings crossing each other ~ Fig.2. The [constrained Delaunay triangulation](https://rufat.be/triangle/definitions.html) knows there are lines (walls) and expects a vertex where they intersect. When there is none an error will occur. **Open an [osm editor](https://wiki.openstreetmap.org/wiki/Editors) and correct the topology please**. *We are transforming volunteered public data into a value-added product. Alchemy is a process. Please be patient.
+Generally the root of these challenges are buildings crossing each other ~ Fig.2. The [constrained Delaunay triangulation](https://rufat.be/triangle/definitions.html) knows there are lines (walls) and expects a vertex where they intersect. When there is none an error will occur. **Open an [osm editor](https://wiki.openstreetmap.org/wiki/Editors) and correct the topology please**. *We are transforming volunteered public data into a value-added product. Alchemy is a process. Please be patient.*
 <!--<sup>*</sup>*-->
 
 <!--### Spikes
