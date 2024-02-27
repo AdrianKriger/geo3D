@@ -27,7 +27,7 @@ Depending of the processing strategy the needs are slightly different.
   </tr>
   <tr>
     <td align="center"> This workflow creates a LoD1 3D City Model <br>(buildings and terrain) from <br> <a href="https://www.openstreetmap.org/about">OpenStreetMap (osm) contributions</a> <br> with elevation from a raster Digital Elevation Model (DEM) </td>
-    <td align="center"> This strategy creates a basic 3D visualization </td>
+    <td align="center"> This strategy creates a basic 3D visualization from <br> <a href="https://www.openstreetmap.org/about">OpenStreetMap (osm) contributions</a> <br> </td>
   </tr>
   <tr>
     <td align="center"> raster DEM </td>
