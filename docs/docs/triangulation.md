@@ -47,7 +47,7 @@ Generally the root of these challenges are buildings crossing each other ~ Fig.2
 
 <!--### Spikes
 
-An additional quality check is for a spike or two. Generally the root of this challenge are buildings crossing each other ~ Fig.2. The [constrained Delaunay triangulation](https://rufat.be/triangle/definitions.html) knows there are lines (walls) and expects a vertex where they intersect. There is none and the result is a spike. **Open an [osm editor](https://wiki.openstreetmap.org/wiki/Editors) and correct the topology please**. *We are transforming volunteered public data into a value-added product. Alchemy is a process. Please be patient.<sup>*</sup>*
+An additional quality check is for a spike or two. Generally the root of this challenge are buildings crossing each other ~ Fig.2. The [constrained Delaunay triangulation](https://rufat.be/triangle/definitions.html) knows there are lines (walls) and expects a vertex where they intersect. There is none and the result is a spike. **Open an [osm editor](https://wiki.openstreetmap.org/wiki/Editors) and correct the topology please**. *We are transforming volunteered public data into a value-added product. Alchemy is a process. Please be patient.*<sup>*</sup>*
 
 <p align="center">
   <img src="{{site.baseurl | prepend: site.url}}/img/sp01.png" alt="alt text" width="350" height="250">  <img src="{{site.baseurl | prepend: site.url}}/img/sp02.png" alt="alt text" width="350" height="250">
