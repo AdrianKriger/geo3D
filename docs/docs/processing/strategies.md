@@ -31,7 +31,7 @@ nav_order: 2
     <td align="center"> <strong>Product:</strong> An <a href="https://www.ogc.org/standard/citygml/">Open Geospatial Consortium (OGC) </a> standard LoD1 3D model adhering to the <a href="https://www.iso.org/standard/66175.html">International Standards Organization (ISO19107) </a> rules. <br><br> These simulation-ready models provide insights for urban planning, resource allocation, and community development with such use cases as estimating noise propogation, energy demand and simulating wind comfort factor. </td>
     <td align="center"> <strong>Product:</strong> A 3D HTML-based visualization for user interaction, navigation, and sharing, promoting community engagement and understanding </td>
  <tr>
-    <td colspan="2">Iether stratergy will further exectue examples of <a href="https://adriankriger.github.io/geo3D/docs/spatial/">Spatial Data Science </a> </td>
+    <td align="center" colspan="2"> Iether stratergy will further exectue examples of <a href="https://adriankriger.github.io/geo3D/docs/spatial/">Spatial Data Science </a> </td>
  </tr>
 </table>
 
