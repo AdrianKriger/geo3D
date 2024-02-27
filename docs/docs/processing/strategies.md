@@ -32,7 +32,7 @@ nav_order: 2
     <td align="center"> <strong>Product:</strong> A 3D HTML-based visualization for user interaction, navigation, and sharing, promoting community engagement and understanding </td>
   </tr>
  <tr>
-    <td align="center" colspan="2"> Iether stratergy can further execute examples of <a href="https://adriankriger.github.io/geo3D/docs/spatial/">Spatial Data Science </a> </td>
+    <td align="center" colspan="2"> Either strategy can further execute examples of <a href="https://adriankriger.github.io/geo3D/docs/spatial/">Spatial Data Science </a> </td>
  </tr>
 </table>
 
