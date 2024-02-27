@@ -35,7 +35,7 @@ Depending of the processing strategy the needs are slightly different.
   </tr>
 </table>
 
-<sup>* for the purposes of geo3D a DEM is a bare earth raster grid; free of man-made and natural features.
+<sup>* for the purposes of [geo3D](https://github.com/AdrianKriger/geo3D) a DEM is a bare earth raster grid; free of man-made and natural features.
 
 ## Folder Structure
 
