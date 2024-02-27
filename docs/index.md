@@ -14,7 +14,9 @@ permalink: /
 
 The tool extends the core [TeachOSM](https://teachosm.org) curriculum (Module 1-4) and is ***meant for communities with a population of 10 000 or less***.
 
-The purpose of this work aims to go beyond traditional mapping and enrich high school learning through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
+The purpose of this work aims to go beyond traditional mapping and enrich high school learning through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. 
+<br>
+We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
 
  <figure><center>
   <img src="{{site.baseurl | prepend: site.url}}/img/CityJSON_Ninja_cputb.png" style="width: 800px; height: 400px; border: 0px">
@@ -49,4 +51,4 @@ The primary product is a topologically correct Level of Detail 1 (LoD1) 3D City 
  
 Please see the [Discussion](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/discussions/22).
 
-<sup>* ***the goal is a model that conforms to the ISO 19107 standard [connecting and planar surfaces, correct orientation of the surfaces and watertight volumes] I have not tested this for all possibilities. If the result you achieve is not; you are welcome to raise an [issue](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/issues). I depend on you to help me improve.*** 
+<sup>* ***the goal is a [Open Geospatial Consortium (OGC)](https://www.ogc.org/standard/citygml/) standard model that conforms to the [ISO 19107 standard](https://www.iso.org/standard/66175.html) [connecting and planar surfaces, correct orientation of the surfaces and watertight volumes] I have not tested this for all possibilities. If the result you achieve is not; you are welcome to raise an [issue](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/issues). I depend on you to help me improve.*** 
