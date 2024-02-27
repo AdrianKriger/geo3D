@@ -26,7 +26,7 @@ Depending of the processing strategy the needs are slightly different.
     <th align="center"><a href="https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb">InteractiveOnly </a> </th>
   </tr>
   <tr>
-    <td align="center"> This workflow creates a LoD1 3D City Model <br>(buildings and terrain) from <br> <a href="https://www.openstreetmap.org/about">OpenStreetMap (osm) contributions</a> <br> with elevation from a <a href="https://www.usgs.gov/faqs/what-digital-elevation-model-dem">raster Digital Elevation Model (DEM)</a> </td>
+    <td align="center"> This workflow creates a LoD1 3D City Model <br>(buildings and terrain) from <br> <a href="https://www.openstreetmap.org/about">OpenStreetMap (osm) contributions</a> <br> with elevation from a Digital Elevation Model (DEM)<sup>*</sup> </td>
     <td align="center"> This strategy creates a basic 3D visualization from <br> <a href="https://www.openstreetmap.org/about">OpenStreetMap (osm) contributions</a> <br> </td>
   </tr>
   <tr>
@@ -34,6 +34,8 @@ Depending of the processing strategy the needs are slightly different.
     <td align="center"> nothing is necessary </td>
   </tr>
 </table>
+
+<sup>* for the purposes of geo3D a DEM is a bare earth raster grid; free of man-made and natural features.
 
 ## Folder Structure
 
