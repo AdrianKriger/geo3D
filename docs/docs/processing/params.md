@@ -50,7 +50,7 @@ An extensive range of [osm.poly](https://wiki.openstreetmap.org/wiki/Osmosis/Pol
 
 `"update": "True"` to access a fresh `osm.pbf`. `"False"` will use an existing `osm.pbf`.-->
 
-A number of `param.json` are available as [Examples](https://adriankriger.github.io/osm_LoD1_3DCityModel/docs/docs/examples) to illustrate its usage.
+A number of `param.json` are available as [Examples](https://adriankriger.github.io/geo3D/docs/docs/examples) to illustrate its usage.
 
 ### crs
 
