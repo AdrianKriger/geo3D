@@ -49,6 +49,6 @@ We drive engagement and participation by *giving students* the ability to create
 ---
 The primary product is a topologically correct Level of Detail 1 (LoD1) 3D City Model<sup>*</sup>. Secondary products include an application of spatial data science and an HTML-based visualization. Our mission is to empower high school learning and community engagement by fostering effective communication and advocacy at the grassroots level.
  
-Please see the [Discussion](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/discussions/22).
+Please see the [Discussion](https://github.com/AdrianKriger/geo3D/discussions/1).
 
 <sup>* ***the goal is a [Open Geospatial Consortium (OGC)](https://www.ogc.org/standard/citygml/) standard model that conforms to the [ISO 19107 spatial schema for 3D primatives](https://www.iso.org/standard/66175.html) [connecting and planar surfaces, correct orientation of the surfaces and watertight volumes] I have not tested this for all possibilities. If the result you achieve is not; you are welcome to raise an [issue](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/issues). I depend on you to help me improve.*** 
