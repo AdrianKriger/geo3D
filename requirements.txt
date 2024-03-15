@@ -10,13 +10,14 @@ pydeck==0.8.0
 topojson==1.7
 
 #-- I went in the easiest way possible. Miniconda in (base)
-#--    first: conda create -n {env-name} -c conda-forge python=3.8 fiona geopandas mapbox_earcut pydeck topojson
-#--   second: conda active {env-name}
+#--    first: conda install jupyter
+#--   second: conda create -n {env-name} -c conda-forge python=3.8 fiona geopandas mapbox_earcut pydeck topojson
+#--    third: conda active {env-name}
 
 #--     then:
 ipython kernel install --user --name={env-name}-kernel. #- so that Jupyter in (base) can access this env kernel
 
-#-- and finally
+#--  finally:
 #pip
 triangle==20230923	 #- python wrapper around Jonathan Richard Shewchuk's at rufat.be/triangle
 cjio==0.7.3	         #- python CLI to process and manipulate CityJSON files
@@ -24,4 +25,4 @@ overpass==0.7
 osm2geojson==0.2.4
 openlocationcode==1.0.1	 #- google 'plus codes' at https://github.com/google/open-location-code
 
-#-- execute `jupyter notebook` that comes with Miniconda in (base) but harvest the kernel from this environment.
+#-- execute `jupyter notebook` in (base) but harvest the kernel from this environment.
