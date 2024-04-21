@@ -14,9 +14,9 @@ permalink: /
 
 The tool extends the core [TeachOSM](https://teachosm.org) curriculum (Module 1-4) and is ***meant for communities with no more than 2 500 buildings***.
 
-The purpose of this work aims to go beyond traditional mapping and enrich geography and sustainable development education through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. 
+The purpose of this work aims to go beyond traditional mapping and enrich geography and sustainable development education through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
+
 <br>
-We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
 
  <figure><center>
   <img src="{{site.baseurl | prepend: site.url}}/img/CityJSON_Ninja_cputb.png" style="width: 800px; height: 400px; border: 0px">
