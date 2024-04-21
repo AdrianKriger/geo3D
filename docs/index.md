@@ -2,7 +2,7 @@
 layout: default
 title: Home
 nav_order: 1
-description: "Level-of-Detail 1 3D City Models for High School Learning."
+description: "Level-of-Detail 1 3D City Models for Geography and Sustainable Development education."
 permalink: /
 ---
 
@@ -10,11 +10,11 @@ permalink: /
 3D City Models for High School Learning  
 {: .fs-9 }
 
-[`geo3D`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) is a [python-based](https://en.wikipedia.org/wiki/Python_(programming_language)) workflow to facilitate high school learning. 
+[`geo3D`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) is a [python-based](https://en.wikipedia.org/wiki/Python_(programming_language)) workflow to facilitate high school and tertiary level learning. 
 
 The tool extends the core [TeachOSM](https://teachosm.org) curriculum (Module 1-4) and is ***meant for communities with a population of 10 000 or less***.
 
-The purpose of this work aims to go beyond traditional mapping and enrich high school learning through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. 
+The purpose of this work aims to go beyond traditional mapping and enrich geography and sustainable development education through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. 
 <br>
 We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools.
 
