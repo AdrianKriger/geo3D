@@ -1,7 +1,7 @@
 #### binder test ####
 
 #python==3.8
-gdal==3.7.0
+#gdal==3.7.0
 fiona==1.9.4
 geopandas==0.13.2
 mapbox_earcut==1.0.1
