@@ -19,7 +19,7 @@ dependencies:
   #- http://www.lfd.uci.edu/~gohlke/pythonlibs/bofhrmxk/opencv_python-3.1.0-cp35-none-win_amd64.whl
   #- triangle==20230923	 #- python wrapper around Jonathan Richard Shewchuk's at rufat.be/triangle
   #- cjio==0.7.3	         #- python CLI to process and manipulate CityJSON files
-  #- overpass==0.7	
+  #- overpass==0.7
   #- osm2geojson==0.2.4
   #- openlocationcode==1.0.1	 #- google 'plus codes' at https://github.com/google/open-location-code
   - -r requirements.txt
