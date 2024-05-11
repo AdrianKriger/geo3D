@@ -1,4 +1,4 @@
-#### binder test ####
+#### pip requirements for binder ####
 
 #python==3.8
 #gdal==3.7.0 
