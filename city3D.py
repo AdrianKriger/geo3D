@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# env/osm3D_vc-env
+# env/osm3D_v4
 #########################
-# code to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
+# helper functions to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
 
 # author: arkriger - 2024
 # github: https://github.com/AdrianKriger/geo3D
