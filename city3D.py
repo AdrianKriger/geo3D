@@ -1,25 +1,36 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Jun 26 10:15:32 2024
+# env/osm3D_vc-env
+#########################
+# code to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
 
-@author: adriankriger
-"""
+# author: arkriger - 2024
+# github: https://github.com/AdrianKriger/geo3D
+
+# script credit:
+#    - building height from osm building:level: https://github.com/ualsg/hdb3d-code/blob/master/hdb2d.py - Filip Biljecki <filip@nus.edu.sg>
+#    - polygon to lines without duplicate edges: https://gis.stackexchange.com/questions/236903/converting-polygon-to-lines-without-duplicate-edges
+#    - gdal raster query: https://gis.stackexchange.com/questions/269603/extract-raster-values-from-point-using-gdal
+#    - geopandas snap routine: https://gis.stackexchange.com/questions/290092/how-to-do-snapping-in-geopandas
+#    - fill Nan: https://stackoverflow.com/questions/33883200/pandas-how-to-fill-nan-none-values-based-on-the-other-columns
+#    - extruder: https://github.com/cityjson/misc-example-code/blob/master/extruder/extruder.py - Hugo Ledoux <h.ledoux@tudelft.nl>
+#    - .obj with material: https://cjio.readthedocs.io/en/latest/_modules/cjio/cityjson.html#CityJSON.export2obj
+
+# additional thanks:
+#    - OpenStreetMap help: https://help.openstreetmap.org/users/19716/arkriger
+#    - cityjson community: https://github.com/cityjson
+#########################
 
 import json
 import fiona
 import copy
 
 
-import shapely
 import shapely.geometry as sg
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, LinearRing, shape, mapping
 from shapely.ops import snap
 from shapely.ops import transform
 
-import geopandas as gpd
 import pyproj
-from osgeo import gdal, ogr, osr
 
 from openlocationcode import openlocationcode as olc
 
