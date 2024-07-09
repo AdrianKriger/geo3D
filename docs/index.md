@@ -12,7 +12,7 @@ permalink: /
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AdrianKriger/geo3D/HEAD)
 
-## 3D City Models for Geography and Sustainable Development Education. 
+### 3D City Models for Geography and Sustainable Development Education. 
 [`geo3D`](https://github.com/AdrianKriger/osm_LoD1_3DCityModel) is a [python-based](https://en.wikipedia.org/wiki/Python_(programming_language)) workflow to facilitate high school and tertiary level learning. 
 
 <!-- The tool extends the core [TeachOSM](https://teachosm.org) curriculum (Module 1-4) and is --> 
