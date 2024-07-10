@@ -33,7 +33,7 @@ from cjio import cityjson
 
 dps = 3
 
-#-- calculate building height and wrtie to geojson
+#-- calculate building height and write to geojson
 def writegjson(ts, jparams, epsg):
     """
     read the building gpd and create new attributes in osm vector
@@ -568,5 +568,61 @@ def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, 
     c.close() 
     #clean cityjson
     cm = cityjson.load(jparams['cjsn_out'])               
-    cityjson.save(cm, jparams['cjsn_solid'])             
+    cityjson.save(cm, jparams['cjsn_solid'])   
+
+def calc_Bldheight(gj):
+
+    storeyheight = 2.8
+    
+    #-- iterate through the list of buildings and create GeoJSON features rich in attributes
+    footprints = {
+        "type": "FeatureCollection",
+        "features": []
+        }
+    
+    for i in gj['features']:
+        f = {
+        "type" : "Feature"
+        }
+        # at a minimum we only want building:levels tagged
+        if i['properties']['type'] != 'node' and 'tags' in i['properties'] \
+        and 'building:levels' in i['properties']['tags'] is not None:
+            
+            f["properties"] = {}
+            for p in i["properties"]:             
+            #-- store OSM attributes and prefix them with osm_
+                f['properties']['osm_id'] = i['properties']['id']
+                f["properties"]["osm_%s" % p] = i["properties"][p]
+                if 'amenities' in i['properties']:
+                    f['properties']['osm_tags']['amenity'] = i['properties']['amenities']
+                osm_shape = shape(i["geometry"])
+            #-- a few buildings are not polygons, rather linestrings. This converts them to polygons
+            #-- rare, but if not done it breaks the code later
+            #if osm_shape.type == 'LineString':
+            if osm_shape.geom_type == 'LineString':
+                osm_shape = Polygon(osm_shape)
+            #-- and multipolygons must be accounted for
+            #elif osm_shape.type == 'MultiPolygon':
+            elif osm_shape.geom_type == 'MultiPolygon':
+                #osm_shape = Polygon(osm_shape.geoms[0])
+                polys = list(osm_shape.geoms) 
+                #for poly in list(osm_shape.geoms):
+                for poly in polys:
+                    osm_shape = Polygon(poly)#[0])
+            #-- convert the shapely object to geojson
+            f["geometry"] = mapping(osm_shape)
+            f["properties"]['footprint'] = mapping(osm_shape)
+    
+            #-- calculate the height and store it as an attribute
+            f["properties"]['height'] = float(i["properties"]['tags']['building:levels']) * storeyheight + 1.3 
+            #-- plus code
+            p = osm_shape.representative_point()
+            f["properties"]["plus_code"] = olc.encode(p.y, p.x, 11)
+                
+            footprints['features'].append(f)
+    
+    
+    #-- store the data as GeoJSON
+    with open('./data/fp_j.geojson', 'w') as outfile:
+        json.dump(footprints, outfile)          
     
