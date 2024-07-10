@@ -18,6 +18,7 @@ import json
 import fiona
 import copy
 
+import pandas as pd
 
 import shapely.geometry as sg
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, LinearRing, shape, mapping
@@ -33,7 +34,7 @@ from cjio import cityjson
 dps = 3
 
 #-- calculate building height and wrtie to geojson
-def writegjson(ts, jparams):
+def writegjson(ts, jparams, epsg):
     """
     read the building gpd and create new attributes in osm vector
     ~ ground height, relative building height and roof height.
@@ -104,7 +105,8 @@ def writegjson(ts, jparams):
             
             #-- google plus_code
             wgs84 = pyproj.CRS('EPSG:4326')
-            utm = pyproj.CRS(jparams['crs'])
+            utm = pyproj.CRS(epsg)
+            #utm = pyproj.CRS(jparams['crs'])
             p = osm_shape.representative_point()
             project = pyproj.Transformer.from_crs(utm, wgs84, always_xy=True).transform
             wgs_point = transform(project, p)
@@ -155,6 +157,105 @@ def writegjson(ts, jparams):
     #-- store the data as GeoJSON
     with open(jparams['osm_bldings'], 'w') as outfile:
         json.dump(footprints, outfile)
+
+
+def getBldVertices(dis, gt_forward, rb): #
+    """
+    retrieve vertices from building footprints ~ without duplicates 
+    - these vertices already have a z attribute
+    """  
+    all_coords = []
+    min_zbld = []
+    dps = 3
+    segs = set()
+    
+    for ids, row in dis.iterrows():
+        oring = list(row.geometry.exterior.coords)
+        coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in oring]
+        all_coords.extend(coords_rounded)
+        zbld = [z for x, y, z in coords_rounded]
+        min_zbld.append(min(zbld))
+        
+        segs.update({(x1, y1, x2, y2) if (x1 < x2) else (x2, y2, x1, y1) for (x1, y1, z1), (x2, y2, z2) in zip(coords_rounded[:-1], coords_rounded[1:])})
+        
+        for interior in row.geometry.interiors:
+            oring = list(interior.coords)
+            coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in oring]
+            all_coords.extend(coords_rounded)
+            
+            segs.update({(x1, y1, x2, y2) if (x1 < x2) else (x2, y2, x1, y1) for (x1, y1, z1), (x2, y2, z2) in zip(coords_rounded[:-1], coords_rounded[1:])})
+    
+    c = pd.DataFrame.from_dict({"coords": list(segs)}).groupby("coords").size().reset_index(name="count")
+    
+    ac = pd.DataFrame(all_coords, 
+                      columns=["x", "y", "z"]).sort_values(by="z", ascending=False).drop_duplicates(subset=["x", "y"]).reset_index(drop=True)
+        
+    return ac, c, min_zbld
+
+def rasterQuery2(mx, my, gt_forward, rb):
+    
+    px = int((mx - gt_forward[0]) / gt_forward[1])
+    py = int((my - gt_forward[3]) / gt_forward[5])
+
+    intval = rb.ReadAsArray(px, py, 1, 1)
+
+    return intval[0][0]
+
+def getAOIVertices(aoi, gt_forward, rb): 
+    """
+    retrieve vertices from aoi ~ without duplicates 
+    - these vertices are assigned a z attribute
+    """   
+    aoi_coords = []
+    dps = 3
+    segs = set()
+    
+    for ids, row in aoi.iterrows():
+        oring = list(row.geometry.exterior.coords)
+        coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in oring]
+        aoi_coords.extend(coords_rounded)
+        
+        segs.update({(x1, y1, x2, y2) if (x1 < x2) else (x2, y2, x1, y1) for (x1, y1, z1), (x2, y2, z2) in zip(coords_rounded[:-1], coords_rounded[1:])})
+        
+        for interior in row.geometry.interiors:
+            oring = list(interior.coords)
+            coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in oring]
+            aoi_coords.extend(coords_rounded)
+            
+            segs.update({(x1, y1, x2, y2) if (x1 < x2) else (x2, y2, x1, y1) for (x1, y1, z1), (x2, y2, z2) in zip(coords_rounded[:-1], coords_rounded[1:])})
+    
+    ca = pd.DataFrame.from_dict({"coords": list(segs)}).groupby("coords").size().reset_index(name="count")
+    
+    acoi = pd.DataFrame(aoi_coords, 
+                      columns=["x", "y", "z"]).sort_values(by="z", ascending=False).drop_duplicates(subset=["x", "y"]).reset_index(drop=True)
+    
+    return acoi, ca
+
+def concatCoords(gdf, ac):
+    df2 = pd.concat([gdf, ac])
+    
+    return df2
+
+def createSgmts(ac, c, gdf, idx):
+    """
+    create a segment list for Triangle
+    - indices of vertices [from, to]
+    """
+    
+    l = len(gdf) #- 1
+    lr = 0
+    idx01 = []
+    
+    for i, row in c.iterrows():
+        frx, fry = row.coords[0], row.coords[1]
+        tox, toy = row.coords[2], row.coords[3]
+
+        [index_f] = (ac[(ac['x'] == frx) & (ac['y'] == fry)].index.values)
+        [index_t] = (ac[(ac['x'] == tox) & (ac['y'] == toy)].index.values)
+        idx.append([l + index_f, l + index_t])
+        idx01.append([lr + index_f, lr + index_t])
+    
+    return idx, idx01
 
 
 # -- create CityJSON
