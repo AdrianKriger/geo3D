@@ -1,9 +1,9 @@
 # geo3D
 3D City Models &amp; Spatial Data Science for Geography and Sustainable Development Education.
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AdrianKriger/geo3D/tree/main/HEAD)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AdrianKriger/geo3D/HEAD)
 
-<p align="center">There are two procesing strategies</p>
+<p align="center">There are two processing option</p>
 
 | [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
 | :-----: | :-----: |
