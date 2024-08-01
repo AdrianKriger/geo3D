@@ -3,7 +3,7 @@
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AdrianKriger/geo3D/HEAD)
 
-<p align="center">There are two processing option</p>
+<p align="center">There are two processing options:</p>
 
 | [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
 | :-----: | :-----: |
