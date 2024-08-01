@@ -1,7 +1,7 @@
 ### conda-forge requirements for binder ###
 name: binder-env
 dependencies:
-- python=3.8.18
+- python=3.9
 - fiona=1.9.4
 - geopandas=0.13.2
 - pyrosm=0.6.2
