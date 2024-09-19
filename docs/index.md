@@ -18,7 +18,15 @@ permalink: /
 
 <!-- The tool extends the core [TeachOSM](https://teachosm.org) curriculum (Module 1-4) and is --> 
 
-The purpose of this work aims to enrich geography and sustainable development education through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools. geo3D is ***meant for communities with no more than 2 500 buildings***.
+The purpose of this work aims to enrich geography and sustainable development education through a [constructivist](https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_education)) approach. We drive engagement and participation by *giving students* the ability to create affordable, high-quality 3D City Models and using these as learning tools. 
+
+<!-- geo3D is ***meant for communities with no more than 2 500 buildings***. -->
+
+<p align="center">There are two processing options:</p>
+
+| [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
+| :-----: | :-----: |
+| If your Area-of-Interest (aoi) has less than <br /> 2 500 buildings, you are welcome to choose [village](https://github.com/AdrianKriger/geo3D/tree/main/village) | Please choose [suburb](https://github.com/AdrianKriger/geo3D/tree/main/suburb) if your aoi has more than 2 500 buildings |
 
 <br>
 
@@ -34,7 +42,7 @@ The purpose of this work aims to enrich geography and sustainable development ed
 </p>
 &nbsp;&nbsp;--> 
 
-<p align="center"><b>There are two procesing strategies</b></p>
+<p align="center"><b>Within each processing option; there are two strategies</b></p>
 
 <!--| [osm_LoD1_3DCityModel](https://github.com/AdrianKriger/geo3D/blob/main/osm_LoD1_3DCityModel-walkthrough.ipynb) | [InteractivateOnly](https://github.com/AdrianKriger/geo3D/blob/main/interactiveOnly.ipynb) |
 | :-----: | :-----: |
