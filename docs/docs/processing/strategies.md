@@ -10,7 +10,7 @@ nav_order: 2
 &nbsp;
 
 
-<p align="center">There are two processing options:</p>
+<p align="center"><b>There are two processing options</b></p>
 
 | [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
 | :-----: | :-----: |
