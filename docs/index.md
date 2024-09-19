@@ -22,7 +22,7 @@ The purpose of this work aims to enrich geography and sustainable development ed
 
 <!-- geo3D is ***meant for communities with no more than 2 500 buildings***. -->
 
-<p align="center">There are two processing options:</p>
+<p align="center"><b>There are two processing options</b></p>
 
 | [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
 | :-----: | :-----: |
