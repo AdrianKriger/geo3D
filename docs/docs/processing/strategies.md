@@ -9,7 +9,14 @@ nav_order: 2
 <!-- {: .no_toc } -->
 &nbsp;
 
-<p align="center"><b>There are two procesing strategies</b></p>
+
+<p align="center">There are two processing options:</p>
+
+| [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
+| :-----: | :-----: |
+| If your Area-of-Interest (aoi) has **less than** <br /> **2 500** buildings, you are welcome to choose [village](https://github.com/AdrianKriger/geo3D/tree/main/village) | Please choose [suburb](https://github.com/AdrianKriger/geo3D/tree/main/suburb) if your aoi **has more than 2 500** buildings |
+
+<p align="center"><b>within each processing option; there are two strategies</b></p>
 
 <!--| [Village/Campus](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/village_campus) | [District](https://github.com/AdrianKriger/osm_LoD1_3DCityModel/tree/main/districts) *[on hold]*|
 | :-----: | :-----: |
