@@ -392,8 +392,11 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
         if lsattributes[i]['osm_building'] != 'bridge' and lsattributes[i]['osm_building'] != 'roof':
             new_edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
             new_edges = [[min_zbld[i-count]] + sub_list for sub_list in new_edges]
+            #print(lsattributes[i]['osm_id'], min_zbld[i-count])
             extrude_walls(oring, lsattributes[i]['roof_height'], min_zbld[i-count], 
                           allsurfaces, cm, new_edges)
+
+                
        
         #-- interior rings of each footprint
         irings = []
@@ -691,11 +694,11 @@ def writegjsonD(ts, jparams, epsg):
         if 'rooms' in columns and row['rooms'] != None:
             f["properties"]["osm_building:rooms"] = row['rooms']
         if 'residential' in columns and row['residential'] != None:
-            f["properties"]["residential"] = row['residential']
+            f["properties"]["osm_residential"] = row['residential']
         if 'amenity' in columns and row['amenity'] != None:
             f["properties"]["amenity"] = row['amenity']
         if 'social_facility' in columns and row['social_facility'] != None:
-            f["properties"]["social_facility"] = row['social_facility']
+            f["properties"]["osm_social_facility"] = row['social_facility']
               
         osm_shape = row["geometry"] # shape(row["geometry"][0])
             #-- a few buildings are not polygons, rather linestrings. This converts them to polygons
