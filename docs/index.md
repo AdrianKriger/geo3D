@@ -23,9 +23,11 @@ The purpose of this work aims to enrich geography and sustainable development ed
 <!-- geo3D is ***meant for communities with no more than 2 500 buildings***. -->
 
 <!-- <iframe src="{{site.baseurl | prepend: site.url}}/img/geo3D_arkriger_4minBlankStndHevc.mp4" style="width: 800px; height: 400px; border: 0px"></iframe> -->
-<video controls="" width="800" height="500" muted="" loop="" autoplay="">
+<!-- <video controls="" width="800" height="500" muted="" loop="" autoplay="">
 <source src="https://drive.google.com/file/d/1axsM_u67AYtv8XP8rDS9nP3jzWwawOdm/view?usp=share_link">
-</video>
+</video> -->
+<iframe src="https://drive.google.com/file/d/1axsM_u67AYtv8XP8rDS9nP3jzWwawOdm/view?usp=share_link" style="width: 800px; height: 400px; border: 0px"></iframe> -->
+
 
 <p align="center"><b>There are two processing options</b></p>
 
