@@ -27,7 +27,7 @@ The purpose of this work aims to enrich geography and sustainable development ed
 <source src="https://drive.google.com/file/d/1axsM_u67AYtv8XP8rDS9nP3jzWwawOdm/view?usp=share_link">
 </video> -->
 <!-- <iframe src="https://drive.google.com/file/d/1axsM_u67AYtv8XP8rDS9nP3jzWwawOdm/preview" style="width: 800px; height: 400px; border: 0px" ></iframe> -->
-<iframe src="https://drive.google.com/file/d/1axsM_u67AYtv8XP8rDS9nP3jzWwawOdm/preview" style="width: 800px; height: 400px; border: 0px" ></iframe>
+<iframe src="https://drive.google.com/file/d/17PEDEATMP3aJrafUOdHFfeMyjIC7h_ee/preview" style="width: 800px; height: 400px; border: 0px" ></iframe>
 
 
 <p align="center"><b>There are two processing options</b></p>
