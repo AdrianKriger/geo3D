@@ -24,7 +24,7 @@ The purpose of this work aims to enrich geography and sustainable development ed
 
 <!-- <iframe src="{{site.baseurl | prepend: site.url}}/img/geo3D_arkriger_4minBlankStndHevc.mp4" style="width: 800px; height: 400px; border: 0px"></iframe> -->
 <video controls="" width="800" height="500" muted="" loop="" autoplay="">
-<source src="{{site.baseurl | prepend: site.url}}/img/geo3D_arkriger_4minBlankStndHevc.mp4" type="video/mp4">
+<source src="{{site.baseurl | prepend: site.url}}/img/geo3D_arkriger_4minBlankStndHevc.mp4">
 </video>
 
 <p align="center"><b>There are two processing options</b></p>
