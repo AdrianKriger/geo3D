@@ -10,4 +10,4 @@
 | If your Area-of-Interest (aoi) has less than <br /> 2 500 buildings, you are welcome to choose [village](https://github.com/AdrianKriger/geo3D/tree/main/village) | Please choose [suburb](https://github.com/AdrianKriger/geo3D/tree/main/suburb) if your aoi has more than 2 500 buildings |
 ---
 
-Paper currently under review with the [South African Journal of Geomatics](http://www.sajg.org.za/index.php/sajg/issue/archive)
+<!--Paper currently under review with the [South African Journal of Geomatics](http://www.sajg.org.za/index.php/sajg/issue/archive)-->
