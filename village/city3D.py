@@ -3,7 +3,7 @@
 #########################
 # helper functions to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
 
-# author: arkriger - 2024
+# author: arkriger - 2023-2025
 # github: https://github.com/AdrianKriger/geo3D
 
 # script credit:
@@ -18,6 +18,7 @@ import json
 import fiona
 import copy
 
+import numpy as np
 import pandas as pd
 
 import shapely.geometry as sg
@@ -29,134 +30,114 @@ import pyproj
 
 from openlocationcode import openlocationcode as olc
 
-from cjio import cityjson
+from cjio import cityjson, geom_help
 
 dps = 3
 
 #-- calculate building height and write to geojson
-def writegjson(ts, jparams, epsg):
-    """
-    read the building gpd and create new attributes in osm vector
-    ~ ground height, relative building height and roof height.
-    write the result to .geojson
-    """
-    #-- take care of non-Polygon LineString's 
-    for i, row in ts.iterrows():
-        if row.geometry.geom_type == 'LineString' and len(row.geometry.coords) < 3:
-            ts = ts.drop(ts.index[i])
+def process_geometry(geometry):
+    """Ensure valid polygon geometry for buildings."""
+    if geometry.geom_type == 'LineString':
+        return Polygon(geometry)
+    elif geometry.geom_type == 'MultiPolygon':
+        return Polygon(list(geometry.geoms)[0])
+    return geometry
+
+def extract_address(row):
+    # """Extract and format address components from OSM data."""
+    # address_keys = [
+    #     'addr:housename', 'addr:flats', 'addr:housenumber', 'addr:street',
+    #     'addr:suburb', 'addr:postcode', 'addr:city', 'addr:province'
+    # ]
+    # return " ".join([row[col] for col in address_keys if col in columns and row[col] is not None])
+
+    """Extract and format address components from the 'tags' dictionary in OSM data."""
+    address_keys = [
+        'addr:housename', 'addr:flats', 'addr:housenumber', 'addr:street',
+        'addr:suburb', 'addr:postcode', 'addr:city', 'addr:province'
+    ]
     
+    address_parts = [row.get('tags', {}).get(key) for key in address_keys if row.get('tags', {}).get(key) is not None]
+    
+    return " ".join(address_parts) if address_parts else None  # Return None if empty
+
+def calculate_building_heights(row, storeyheight=2.8):
+    """Compute ground, building, and roof heights based on building type."""
+    ground_height = round(row.get("mean"), 2)  # Default 0 to prevent errors
+    levels = float(row.get('tags', {}).get('building:levels', 1)) * storeyheight
+    
+    
+    if row['building'] == 'bridge':
+        #min_height = float(row.get('min_height', 0)) if 'min_height' in row else levels
+        min_height = ( 
+            float(row.get('tags', {}).get('min_height')) if row.get('tags', {}).get('min_height') is not None else float(row.get('tags', {}).get('building:min_level', 0)) * storeyheight)
+
+        return {
+            'building:levels': row.get('tags', {}).get('building:levels'),
+            'ground_height': ground_height,
+            'bottom_bridge_height': round(min_height + ground_height, 2),
+            'building_height': round(levels, 2),
+            'roof_height': round(levels + ground_height, 2)
+
+        }
+    elif row.get('building') == 'roof':
+        return {
+            'building:levels': row.get('tags', {}).get('building:levels'),
+            'ground_height': ground_height,
+            'bottom_roof_height': round(levels + ground_height, 2),
+            'roof_height': round(levels + ground_height + 1.5, 2)
+        }
+    else:
+        return {
+            'building:levels': row.get('tags', {}).get('building:levels'),
+            'ground_height': ground_height,
+            'building_height': round(levels + 1.3, 2),
+            'roof_height': round(levels + 1.3 + ground_height, 2)
+        }
+
+def write_geojson(ts, jparams, epsg):
+    """Process buildings and write results to GeoJSON."""
     storeyheight = 2.8
-    #-- iterate through the list of buildings and create GeoJSON features rich in attributes
-    footprints = {
-        "type": "FeatureCollection",
-        "features": []
-        }
+    #columns = ts.columns
+    footprints = {"type": "FeatureCollection", "features": []}
     
-    for i, row in ts.iterrows():
-        f = {
-        "type" : "Feature"
-        }
-        #-- at a minimum we only want building:levels tagged
-        if row['type'] != 'node' and row['tags'] != None and 'building:levels' in row['tags']:
+    for _, row in ts.iterrows():
+        if row.geometry.geom_type == 'LineString' and len(row.geometry.coords) < 3:
+            continue  # Skip invalid geometries
+        
+        f = {"type": "Feature", "properties": {"osm_id": row.id}}
+        f["properties"]["address"] = extract_address(row)
+        
+        # Store 'building' attribute directly
+        f["properties"]["building"] = row.get("building")
+
+        # Harvest attributes from 'tags' dictionary
+        for key in [
+            'building:use', 'building:levels', 'building:flats', 'building:units',
+            'beds', 'rooms', 'residential', 'amenity', 'social_facility'
+        ]:
+            value = row.get('tags', {}).get(key)  # Extract safely from 'tags' dictionary
+            if value is not None:
+                f["properties"][key] = value  # Store only if not None
+        
+        osm_shape = process_geometry(row["geometry"])
+        f["geometry"] = mapping(osm_shape)
+        f["properties"]["footprint"] = mapping(osm_shape)
+        
+        # Compute plus_code
+        p = osm_shape.representative_point()
+        f["properties"]["plus_code"] = olc.encode(p.y, p.x, 11)
+        
+        # Compute height attributes
+        height_attributes = calculate_building_heights(row, storeyheight) 
+        for key, value in height_attributes.items(): 
+            if key not in f["properties"]: 
+                f["properties"][key] = value  # Add new values only
+        
+        footprints['features'].append(f)
     
-            f["properties"] = {}
-            
-            #-- store all OSM attributes and prefix them with osm_ 
-            f["properties"]["osm_id"] = row.id
-            for p in row.tags:
-                #-- store OSM attributes and prefix them with osm_
-                f["properties"]["osm_%s" % p] = row.tags[p]
-                #-- we dont want addresses on bridges and rooves
-                if row['bld'] != 'bridge' and row['bld'] != 'roof':
-                    adr = []
-                    #-- transform the OSM address to string prefix with osm_
-                    if 'addr:flats'in row.tags:
-                        adr.append(row.tags['addr:flats'])
-                    if 'addr:housename'in row.tags:
-                        adr.append(row.tags['addr:housename'])
-                    if 'addr:housenumber'in row.tags:
-                        adr.append(row.tags['addr:housenumber'])
-                    if 'addr:street' in row.tags:
-                        adr.append(row.tags['addr:street'])
-                    if 'addr:suburb' in row.tags:
-                        adr.append(row.tags['addr:suburb'])
-                    if 'addr:postcode' in row.tags:
-                        adr.append(row.tags['addr:postcode'])
-                    if 'addr:city' in row.tags:
-                        adr.append(row.tags['addr:city'])
-                    if 'addr:province' in row.tags:
-                        adr.append(row.tags['addr:province'])
-    
-                f["properties"]["osm_address"] = " ".join(adr)
-            
-            osm_shape = shape(row["geometry"])
-            #-- a few buildings are not polygons, rather linestrings. This converts them to polygons
-            #-- rare, but if not done it breaks the code later
-            if osm_shape.geom_type == 'LineString':
-                osm_shape = Polygon(osm_shape)
-            #-- and multipolygons must be accounted for
-            elif osm_shape.geom_type == 'MultiPolygon':
-                polys = list(osm_shape.geoms) 
-                for poly in polys:
-                    osm_shape = Polygon(poly)#[0])
-            
-            f["geometry"] = mapping(osm_shape)
-            f["properties"]["footprint"] = mapping(osm_shape)
-            
-            #-- google plus_code
-            wgs84 = pyproj.CRS('EPSG:4326')
-            utm = pyproj.CRS(epsg)
-            #utm = pyproj.CRS(jparams['crs'])
-            p = osm_shape.representative_point()
-            project = pyproj.Transformer.from_crs(utm, wgs84, always_xy=True).transform
-            wgs_point = transform(project, p)
-            f["properties"]["plus_code"] = olc.encode(wgs_point.y, wgs_point.x, 11)
-            
-            if row['bld'] == 'bridge':
-                f["properties"]['ground_height'] = round(row["mean"], 2)
-            #print('id: ', f["properties"]["osm_id"], row.tags['building:levels'])
-                if row['tags']['min_height'] != None:
-                    f["properties"]['bottom_bridge_height'] = round(float(row.tags['min_height']) + row["mean"], 2)
-                else:
-                    f["properties"]['bottom_bridge_height'] = round((float(row.tags['building:min_level']) * storeyheight) + row["mean"], 2)
-                f["properties"]['building_height'] = round(float(row.tags['building:levels']) * storeyheight, 2)
-                f["properties"]['roof_height'] = round(f["properties"]['building_height'] + row["mean"], 2)
-            if row['bld'] == 'roof':
-                f["properties"]['ground_height'] = round(row["mean"], 2)
-                f["properties"]['bottom_roof_height'] = round(float(row.tags['building:levels']) * storeyheight + row["mean"], 2) 
-                f["properties"]['roof_height'] = round(f["properties"]['bottom_roof_height'] + 1.5, 2)
-            if row['bld'] != 'bridge' and row['bld'] != 'roof':
-                f["properties"]['ground_height'] = round(row["mean"], 2)
-                f["properties"]['building_height'] = round(float(row.tags['building:levels']) * storeyheight + 1.3, 2) 
-                f["properties"]['roof_height'] = round(f["properties"]['building_height'] + row["mean"], 2)
-                   
-                #f["properties"]['ground_height'] = round(row["mean"], 2)
-                #f["properties"]['building_height'] = round(float(row.tags['building:levels']) * storeyheight + 1.3, 2) 
-                #f["properties"]['roof_height'] = round(f["properties"]['building_height'] + row["mean"], 2)
-            
-            footprints['features'].append(f)
-            
-    for value in footprints['features']:
-        if 'osm_addr:flats' in value["properties"]:
-            del value["properties"]["osm_addr:flats"]
-        if 'osm_addr:housenumber' in value["properties"]:
-            del value["properties"]["osm_addr:housenumber"]
-        if 'osm_addr:housename' in value["properties"]:
-            del value["properties"]["osm_addr:housename"]
-        if 'osm_addr:street' in value["properties"]:
-            del value["properties"]["osm_addr:street"]
-        if 'osm_addr:suburb' in value["properties"]:
-            del value["properties"]["osm_addr:suburb"]
-        if 'osm_addr:postcode' in value["properties"]:
-            del value["properties"]["osm_addr:postcode"]
-        if 'osm_addr:city' in value["properties"]:
-            del value["properties"]["osm_addr:city"]
-        if 'osm_addr:province' in value["properties"]:
-            del value["properties"]["osm_addr:province"]
-                
-    #-- store the data as GeoJSON
     with open(jparams['osm_bldings'], 'w') as outfile:
-        json.dump(footprints, outfile)
+        json.dump(footprints, outfile, indent=2)
 
 
 def getBldVertices(dis, gt_forward, rb): #
@@ -171,6 +152,11 @@ def getBldVertices(dis, gt_forward, rb): #
     
     for ids, row in dis.iterrows():
         oring = list(row.geometry.exterior.coords)
+        
+        if row.geometry.exterior.is_ccw == False:
+            #-- to get proper orientation of the normals
+            oring.reverse()
+        
         coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in oring]
         all_coords.extend(coords_rounded)
         zbld = [z for x, y, z in coords_rounded]
@@ -179,8 +165,13 @@ def getBldVertices(dis, gt_forward, rb): #
         segs.update({(x1, y1, x2, y2) if (x1 < x2) else (x2, y2, x1, y1) for (x1, y1, z1), (x2, y2, z2) in zip(coords_rounded[:-1], coords_rounded[1:])})
         
         for interior in row.geometry.interiors:
-            oring = list(interior.coords)
-            coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in oring]
+            iring = list(interior.coords)
+            
+            if interior.is_ccw == True:
+                #-- to get proper orientation of the normals
+                iring.reverse() 
+            
+            coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in iring]
             all_coords.extend(coords_rounded)
             
             segs.update({(x1, y1, x2, y2) if (x1 < x2) else (x2, y2, x1, y1) for (x1, y1, z1), (x2, y2, z2) in zip(coords_rounded[:-1], coords_rounded[1:])})
@@ -212,14 +203,24 @@ def getAOIVertices(aoi, gt_forward, rb):
     
     for ids, row in aoi.iterrows():
         oring = list(row.geometry.exterior.coords)
+        
+        if row.geometry.exterior.is_ccw == False:
+            #-- to get proper orientation of the normals
+            oring.reverse()
+        
         coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in oring]
         aoi_coords.extend(coords_rounded)
         
         segs.update({(x1, y1, x2, y2) if (x1 < x2) else (x2, y2, x1, y1) for (x1, y1, z1), (x2, y2, z2) in zip(coords_rounded[:-1], coords_rounded[1:])})
         
         for interior in row.geometry.interiors:
-            oring = list(interior.coords)
-            coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in oring]
+            iring = list(interior.coords)
+            
+            if interior.is_ccw == True:
+                #-- to get proper orientation of the normals
+                iring.reverse() 
+            
+            coords_rounded = [(round(x, dps), round(y, dps), round(float(rasterQuery2(x, y, gt_forward, rb)), 2)) for x, y in iring]
             aoi_coords.extend(coords_rounded)
             
             segs.update({(x1, y1, x2, y2) if (x1 < x2) else (x2, y2, x1, y1) for (x1, y1, z1), (x2, y2, z2) in zip(coords_rounded[:-1], coords_rounded[1:])})
@@ -258,7 +259,7 @@ def createSgmts(ac, c, gdf, idx):
     return idx, idx01
 
 
-# -- create CityJSON
+# -- create 3D CityJSON
 def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result): 
     
     #-- create the JSON data structure for the City Model
@@ -377,19 +378,24 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
         #-- exterior ring of each footprint
         oring = list(footprint.exterior.coords)
         oring.pop() #-- remove last point since first==last
-        if lsattributes[i]['osm_building'] == 'bridge':
+        
+        if footprint.exterior.is_ccw == False:
+            #-- to get proper orientation of the normals
+            oring.reverse()
+        
+        if lsattributes[i]['building'] == 'bridge':
             edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
             extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_bridge_height'], 
                           allsurfaces, cm, edges)
             count = count + 1
 
-        if lsattributes[i]['osm_building'] == 'roof':
+        if lsattributes[i]['building'] == 'roof':
             edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
             extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_roof_height'], 
                           allsurfaces, cm, edges)
             count = count + 1
 
-        if lsattributes[i]['osm_building'] != 'bridge' and lsattributes[i]['osm_building'] != 'roof':
+        if lsattributes[i]['building'] != 'bridge' and lsattributes[i]['building'] != 'roof':
             new_edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
             new_edges = [[min_zbld[i-count]] + sub_list for sub_list in new_edges]
             extrude_walls(oring, lsattributes[i]['roof_height'], min_zbld[i-count], 
@@ -401,21 +407,26 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
         for each in interiors:
             iring = list(each.coords)
             iring.pop() #-- remove last point since first==last
+            
+            if each.is_ccw == True:
+                #-- to get proper orientation of the normals
+                iring.reverse() 
+            
             irings.append(iring)
             extrude_int_walls(iring, lsattributes[i]['roof_height'], min_zbld[i-count], allsurfaces, cm)
             
         #-- top-bottom surfaces
-        if lsattributes[i]['osm_building'] == 'bridge':
+        if lsattributes[i]['building'] == 'bridge':
             extrude_roof_ground(oring, irings, lsattributes[i]['roof_height'], 
                                 False, allsurfaces, cm)
             extrude_roof_ground(oring, irings, lsattributes[i]['bottom_bridge_height'], 
                                 True, allsurfaces, cm)
-        if lsattributes[i]['osm_building'] == 'roof':
+        if lsattributes[i]['building'] == 'roof':
             extrude_roof_ground(oring, irings, lsattributes[i]['roof_height'], 
                                 False, allsurfaces, cm)
             extrude_roof_ground(oring, irings, lsattributes[i]['bottom_roof_height'], 
                                 True, allsurfaces, cm)
-        if lsattributes[i]['osm_building'] != 'bridge' and lsattributes[i]['osm_building'] != 'roof':
+        if lsattributes[i]['building'] != 'bridge' and lsattributes[i]['building'] != 'roof':
             extrude_roof_ground(oring, irings, lsattributes[i]['roof_height'], 
                             False, allsurfaces, cm)
             extrude_roof_ground(oring, irings, min_zbld[i-count], True, allsurfaces, cm)
@@ -558,7 +569,8 @@ def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, 
     for each in c:
         lsgeom.append(shape(each['geometry'])) #-- geom are casted to Fiona's 
         lsattributes.append(each['properties'])
-                
+               
+    #- 3D Model
     cm = doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result)    
     
     json_str = json.dumps(cm)#, indent=2)
@@ -569,6 +581,21 @@ def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, 
     #clean cityjson
     cm = cityjson.load(jparams['cjsn_out'])               
     cityjson.save(cm, jparams['cjsn_solid'])   
+    
+    # #- 2.75D surface
+    # cm = doVcBndGeomOBJ(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result)    
+    
+    # json_str = json.dumps(cm)#, indent=2)
+    # fout = open(jparams['cjsn_out'], "w")                 
+    # fout.write(json_str)  
+    # ##- close fiona object
+    # c.close() 
+    # #clean 2.75D cityjson
+    # cm = cityjson.load(jparams['cjsn_out'])               
+    # cityjson.save(cm, jparams['cjsn_2_75D'])  
+    # #- write obj
+    # write275obj(jparams)
+    
 
 def calc_Bldheight(gj):
 
@@ -625,122 +652,4 @@ def calc_Bldheight(gj):
     #-- store the data as GeoJSON
     with open('./data/fp_j.geojson', 'w') as outfile:
         json.dump(footprints, outfile)        
-        
-        
-#-- calculate building height and write to geojson for districts
-def writegjsonD(ts, jparams, epsg):
-    """
-    read the building gpd and create new attributes in osm vector
-    ~ ground height, relative building height and roof height.
-    write the result to .geojson
-    """
-    #-- take care of non-Polygon LineString's 
-    for i, row in ts.iterrows():
-        if row.geometry.geom_type == 'LineString' and len(row.geometry.coords) < 3:
-            ts = ts.drop(ts.index[i])
-    
-    storeyheight = 2.8
-    #-- iterate through the list of buildings and create GeoJSON features rich in attributes
-    footprints = {
-        "type": "FeatureCollection",
-        "features": []
-        }
-    
-    columns = ts.columns   
-    for i, row in ts.iterrows():
-        f = {
-        "type" : "Feature"
-        }
-        f["properties"] = {}      
-            #-- store all OSM attributes and prefix them with osm_ 
-        f["properties"]["osm_id"] = row.id
-        adr = []
-                #-- transform the OSM address to string prefix with osm_
-        if 'addr:housename' in columns and row['addr:housename'] != None:
-            adr.append(row['addr:housename'])
-        if 'addr:flats' in columns and row['addr:flats'] != None:
-            adr.append(row['addr:flats'])
-        if 'addr:housenumber' in columns and row['addr:housenumber'] != None:
-            adr.append(row['addr:housenumber'])
-        if 'addr:street' in columns and row['addr:street'] != None:
-            adr.append(row['addr:street'])
-        if 'addr:suburb' in columns and row['addr:suburb'] != None:
-            adr.append(row['addr:suburb'])
-        if 'addr:postcode' in columns and row['addr:postcode'] != None:
-            adr.append(row['addr:postcode'])
-        if 'addr:city' in columns and row['addr:city'] != None:
-            adr.append(row['addr:city'])
-        if 'addr:province' in columns and row['addr:province'] != None:
-            adr.append(row['addr:province'])
-        
-        f["properties"]["osm_address"] = " ".join(adr)
-        
-        # harvest some tags ~ we could harvest all but lets do less
-        if 'building' in columns and row['building'] != None:
-            f["properties"]["osm_building"] = row['building']
-        if 'building:use' in columns and row['building:use'] != None:
-            f["properties"]["osm_building:use"] = row['building:use']
-        if 'building:levels' in columns and row['building:levels'] != None:
-            f["properties"]["osm_building:levels"] = row['building:levels']
-        if 'building:flats' in columns and row['building:flats'] != None:
-            f["properties"]["osm_building:flats"] = row['building:flats']
-        if 'building:units' in columns and row['building:units'] != None:
-            f["properties"]["osm_building:units"] = row['building:units']
-        if 'beds' in columns and row['beds'] != None:
-            f["properties"]["osm_building:beds"] = row['beds']
-        if 'rooms' in columns and row['rooms'] != None:
-            f["properties"]["osm_building:rooms"] = row['rooms']
-        if 'residential' in columns and row['residential'] != None:
-            f["properties"]["osm_residential"] = row['residential']
-        if 'amenity' in columns and row['amenity'] != None:
-            f["properties"]["amenity"] = row['amenity']
-        if 'social_facility' in columns and row['social_facility'] != None:
-            f["properties"]["osm_social_facility"] = row['social_facility']
-              
-        osm_shape = row["geometry"] # shape(row["geometry"][0])
-            #-- a few buildings are not polygons, rather linestrings. This converts them to polygons
-            #-- rare, but if not done it breaks the code later
-        if osm_shape.geom_type == 'LineString':
-            osm_shape = Polygon(osm_shape)
-            #-- and multipolygons must be accounted for
-        elif osm_shape.geom_type == 'MultiPolygon':
-                #osm_shape = Polygon(osm_shape[0])
-                polys = list(osm_shape.geoms) 
-                for poly in polys:
-                    osm_shape = Polygon(poly)#[0])
-            
-        f["geometry"] = mapping(osm_shape)
-        f["properties"]["footprint"] = mapping(osm_shape)
-            
-        #-- google plus_code
-        p = osm_shape.representative_point()
-        f["properties"]["plus_code"] = olc.encode(p.y, p.x, 11)
-            
-        if row['building'] == 'bridge':
-            f["properties"]['ground_height'] = round(row["mean"], 2)
-            #print('id: ', f["properties"]["osm_id"], row.tags['building:levels'])
-            if row['tags']['min_height'] != None:
-                f["properties"]['bottom_bridge_height'] = round(float(row['min_height']) + row["mean"], 2)
-            else:
-                f["properties"]['bottom_bridge_height'] = round((float(row['building:min_level']) * storeyheight) + row["mean"], 2)
-            f["properties"]['building_height'] = round(float(row['building:levels']) * storeyheight, 2)
-            f["properties"]['roof_height'] = round(f["properties"]['building_height'] + row["mean"], 2)
-        if row['building'] == 'roof':
-            f["properties"]['ground_height'] = round(row["mean"], 2)
-            f["properties"]['bottom_roof_height'] = round(float(row['building:levels']) * storeyheight + row["mean"], 2) 
-            f["properties"]['roof_height'] = round(f["properties"]['bottom_roof_height'] + 1.5, 2)
-        if row['building'] != 'bridge' and row['building'] != 'roof':
-            f["properties"]['ground_height'] = round(row["mean"], 2)
-            f["properties"]['building_height'] = round(float(row['building:levels']) * storeyheight + 1.3, 2) 
-            f["properties"]['roof_height'] = round(f["properties"]['building_height'] + row["mean"], 2)
-                   
-            #f["properties"]['ground_height'] = round(row["mean"], 2)
-            #f["properties"]['building_height'] = round(int(row['building:levels']) * storeyheight + 1.3, 2) 
-            #f["properties"]['roof_height'] = round(f["properties"]['building_height'] + row["mean"], 2)
-            
-        footprints['features'].append(f)
-                
-    #-- store the data as GeoJSON
-    with open(jparams['osm_bldings'], 'w') as outfile:
-        json.dump(footprints, outfile)
-    
+               
