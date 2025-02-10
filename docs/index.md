@@ -32,9 +32,21 @@ The purpose of this work aims to enrich geography and sustainable development ed
 
 <p align="center"><b>There are two processing options</b></p>
 
-| [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
+<!--| [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
 | :-----: | :-----: |
-| If your Area-of-Interest (aoi) has **less than** <br /> **2 500** buildings, you are welcome to choose [village](https://github.com/AdrianKriger/geo3D/tree/main/village) | Please choose [suburb](https://github.com/AdrianKriger/geo3D/tree/main/suburb) if your aoi **has more than 2 500** buildings |
+| If your Area-of-Interest (aoi) has **less than** <br /> **2 500** buildings, you are welcome to choose [village](https://github.com/AdrianKriger/geo3D/tree/main/village) | Please choose [suburb](https://github.com/AdrianKriger/geo3D/tree/main/suburb) if your aoi **has more than 2 500** buildings |-->
+
+<table>
+  <tr>
+    <th align="center"><a href="https://github.com/AdrianKriger/geo3D/tree/main/village">Village</a></th>
+    <th style="background: repeating-linear-gradient(-45deg, transparent, transparent 5px, rgba(0,0,0,0.2) 5px, rgba(0,0,0,0.2) 10px); text-align: center; border: 1px solid black;"><a href="https://github.com/AdrianKriger/geo3D/tree/main/suburb">Suburb</a> <em><strong>[in progress]</strong></em></th>
+  </tr>
+  <tr>
+    <td align="center"> If your Area-of-Interest (aoi) has less than 2 500 buildings you are welcome to choose <a href="https://github.com/AdrianKriger/geo3D/tree/main/village">village</a> </td>
+    <td style="background: repeating-linear-gradient(-45deg, transparent, transparent 5px, rgba(0,0,0,0.2) 5px, rgba(0,0,0,0.2) 10px); text-align: center; border: 1px solid black;">Please choose <a href="https://github.com/AdrianKriger/geo3D/tree/main/suburb">suburbs</a> if your aoi has more than 2 500 buildings. </td>
+  </tr>
+</table>
+
 
 <br>
 
