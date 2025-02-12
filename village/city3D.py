@@ -166,6 +166,13 @@ def calculate_building_heights(row, storeyheight=2.8):
     """Compute ground, building, and roof heights based on building type."""
     ground_height = round(row.get("mean", 0), 2)  
     levels = float(row.get('tags', {}).get('building:levels', 1)) * storeyheight
+    
+    if row.get('tags', {}).get('building') == 'cabin':
+        return {
+            'ground_height': ground_height,
+            'building_height': round(levels, 2),
+            'roof_height': round(levels + ground_height, 2)
+            }
 
     if row.get('building') == 'bridge':
         min_height = (
@@ -183,7 +190,7 @@ def calculate_building_heights(row, storeyheight=2.8):
         return {
             'ground_height': ground_height,
             'bottom_roof_height': round(levels + ground_height, 2),
-            'roof_height': round(levels + ground_height + 1.5, 2)
+            'roof_height': round(levels + ground_height + 1.3, 2)
         }
     else:
         return {
@@ -823,7 +830,11 @@ def calc_Bldheight(data, is_geojson=True):
 
         # Compute building height
         levels = float(tags.get('building:levels', 1))  # Default to 1 level if missing
-        f["properties"]['building_height'] = round(levels * storeyheight + 1.3, 2)
+        #f["properties"]['building_height'] = round(levels * storeyheight + 1.3, 2)
+        if tags.get('building') == 'cabin':
+            f["properties"]['building_height'] = round(levels * storeyheight, 2)
+        else:
+            f["properties"]['building_height'] = round(levels * storeyheight + 1.3, 2)
 
         footprints["features"].append(f)
 
