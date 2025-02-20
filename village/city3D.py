@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# env/osm3D_v4
+# env/geo3D_distV2
 #########################
 # helper functions to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
 
@@ -34,116 +34,6 @@ from cjio import cityjson, geom_help
 
 dps = 3
 
-# #-- calculate building height and write to geojson
-# def process_geometry(geometry):
-#     """Ensure valid polygon geometry for buildings."""
-#     if geometry.geom_type == 'LineString':
-#         return Polygon(geometry)
-#     elif geometry.geom_type == 'MultiPolygon':
-#         return Polygon(list(geometry.geoms)[0])
-#     return geometry
-
-# def extract_address(row):
-#     # """Extract and format address components from OSM data."""
-#     # address_keys = [
-#     #     'addr:housename', 'addr:flats', 'addr:housenumber', 'addr:street',
-#     #     'addr:suburb', 'addr:postcode', 'addr:city', 'addr:province'
-#     # ]
-#     # return " ".join([row[col] for col in address_keys if col in columns and row[col] is not None])
-
-#     """Extract and format address components from the 'tags' dictionary in OSM data."""
-#     address_keys = [
-#         'addr:housename', 'addr:flats', 'addr:housenumber', 'addr:street',
-#         'addr:suburb', 'addr:postcode', 'addr:city', 'addr:province'
-#     ]
-    
-#     address_parts = [row.get('tags', {}).get(key) for key in address_keys if row.get('tags', {}).get(key) is not None]
-    
-#     return " ".join(address_parts) if address_parts else None  # Return None if empty
-
-# def calculate_building_heights(row, storeyheight=2.8):
-#     """Compute ground, building, and roof heights based on building type."""
-#     ground_height = round(row.get("mean"), 2)  # Default 0 to prevent errors
-#     levels = float(row.get('tags', {}).get('building:levels', 1)) * storeyheight
-    
-    
-#     if row['building'] == 'bridge':
-#         #min_height = float(row.get('min_height', 0)) if 'min_height' in row else levels
-#         min_height = ( 
-#             float(row.get('tags', {}).get('min_height')) if row.get('tags', {}).get('min_height') is not None else float(row.get('tags', {}).get('building:min_level', 0)) * storeyheight)
-
-#         return {
-#             'building:levels': row.get('tags', {}).get('building:levels'),
-#             'ground_height': ground_height,
-#             'bottom_bridge_height': round(min_height + ground_height, 2),
-#             'building_height': round(levels, 2),
-#             'roof_height': round(levels + ground_height, 2)
-
-#         }
-#     elif row.get('building') == 'roof':
-#         return {
-#             'building:levels': row.get('tags', {}).get('building:levels'),
-#             'ground_height': ground_height,
-#             'bottom_roof_height': round(levels + ground_height, 2),
-#             'roof_height': round(levels + ground_height + 1.5, 2)
-#         }
-#     else:
-#         return {
-#             'building:levels': row.get('tags', {}).get('building:levels'),
-#             'ground_height': ground_height,
-#             'building_height': round(levels + 1.3, 2),
-#             'roof_height': round(levels + 1.3 + ground_height, 2)
-#         }
-
-# def write_geojson(ts, jparams, epsg):
-#     """Process buildings and write results to GeoJSON."""
-#     storeyheight = 2.8
-#     #columns = ts.columns
-#     footprints = {"type": "FeatureCollection", "features": []}
-    
-#     for _, row in ts.iterrows():
-#         if row.geometry.geom_type == 'LineString' and len(row.geometry.coords) < 3:
-#             continue  # Skip invalid geometries
-        
-#         f = {"type": "Feature", "properties": {"osm_id": row.id}}
-#         f["properties"]["address"] = extract_address(row)
-        
-#         # Store 'building' attribute directly
-#         f["properties"]["building"] = row.get("building")
-
-#         # Harvest attributes from 'tags' dictionary
-#         for key in [
-#             'building:use', 'building:levels', 'building:flats', 'building:units',
-#             'beds', 'rooms', 'residential', 'amenity', 'social_facility'
-#         ]:
-#             value = row.get('tags', {}).get(key)  # Extract safely from 'tags' dictionary
-#             if value is not None:
-#                 f["properties"][key] = value  # Store only if not None
-        
-#         osm_shape = process_geometry(row["geometry"])
-#         f["geometry"] = mapping(osm_shape)
-#         f["properties"]["footprint"] = mapping(osm_shape)
-        
-#         # Compute plus_code
-#         p = osm_shape.representative_point()
-#         f["properties"]["plus_code"] = olc.encode(p.y, p.x, 11)
-        
-#         # Compute height attributes
-#         height_attributes = calculate_building_heights(row, storeyheight) 
-#         for key, value in height_attributes.items(): 
-#             if key not in f["properties"]: 
-#                 f["properties"][key] = value  # Add new values only
-        
-#         footprints['features'].append(f)
-    
-#     with open(jparams['osm_bldings'], 'w') as outfile:
-#         json.dump(footprints, outfile, indent=2)
-
-
-
-# import json
-# import openlocationcode as olc
-# from shapely.geometry import shape, Polygon, mapping
 
 def process_geometry(geometry):
     """Ensure valid polygon geometry for buildings."""
@@ -151,7 +41,8 @@ def process_geometry(geometry):
         return Polygon(geometry)
     elif geometry.geom_type == 'MultiPolygon':
         return Polygon(list(geometry.geoms)[0])
-    return geometry
+    else:
+        return geometry
 
 def extract_address(row):
     """Extract and format address components from the 'tags' dictionary in OSM data."""
@@ -167,7 +58,8 @@ def calculate_building_heights(row, storeyheight=2.8):
     ground_height = round(row.get("mean", 0), 2)  
     levels = float(row.get('tags', {}).get('building:levels', 1)) * storeyheight
     
-    if row.get('tags', {}).get('building') == 'cabin':
+    #if row.get('tags', {}).get('building') == 'cabin':
+    if row.get('building') == 'cabin':
         return {
             'ground_height': ground_height,
             'building_height': round(levels, 2),
@@ -199,7 +91,7 @@ def calculate_building_heights(row, storeyheight=2.8):
             'roof_height': round(levels + 1.3 + ground_height, 2)
         }
 
-def write_geojson(ts, jparams, epsg):
+def write_geojson(ts, jparams):
     """Process buildings and write results to GeoJSON (handles both standard and district processing)."""
     storeyheight = 2.8
     footprints = {"type": "FeatureCollection", "features": []}
@@ -244,8 +136,7 @@ def write_geojson(ts, jparams, epsg):
     # Store the data as GeoJSON
     with open(jparams['osm_bldings'], 'w') as outfile:
         json.dump(footprints, outfile, indent=2)
-    print(f"GeoJSON saved successfully to {jparams['osm_bldings']}")
-
+    #print(f"GeoJSON saved successfully to {jparams['osm_bldings']}")
 
 
 def getBldVertices(dis, gt_forward, rb): #
@@ -420,7 +311,7 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
                      }
                  }
             },
-            {"featureIDs": ["Building", "Road"],
+            {"featureIDs": ["Building"],
              "source": [
                  {
                      "description": "OpenStreetMap contributors",
@@ -645,7 +536,7 @@ def extrude_walls(ring, height, ground, allsurfaces, cm, edges):
 def extrude_int_walls(ring, height, ground, allsurfaces, cm):
     #-- each edge become a wall, ie a rectangle
     for (j, v) in enumerate(ring[:-1]):
-        l = []
+       #l = []
         cm['vertices'].append([round(ring[j][0], dps),   round(ring[j][1], dps),   ground])
         #values.append(0)
         cm['vertices'].append([round(ring[j+1][0], dps), round(ring[j+1][1], dps), ground])
@@ -793,15 +684,6 @@ def calc_Bldheight(data, is_geojson=True):
         ]
         address_parts = [tags.get(k) for k in address_keys if tags.get(k) is not None]
         f["properties"]["address"] = " ".join(address_parts) if address_parts else None
-
-        # # Extract building attributes
-        # for key in [
-        #     'building', 'building:use', 'building:levels', 'building:flats', 
-        #     'building:units', 'beds', 'rooms', 'residential', 'amenity', 'social_facility'
-        # ]:
-        #     value = tags.get(key)
-        #     if value is not None:
-        #         f["properties"][f"osm_{key}"] = value
         
         # Harvest attributes from 'tags' dictionary
         for key in [
