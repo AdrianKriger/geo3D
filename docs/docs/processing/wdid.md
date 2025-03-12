@@ -63,7 +63,7 @@ A dynamic visualisation and spatial analysis is possible. [Interactive Visualiza
 
 ## Is it useful?
 
-The LoD1 City Model, while basic, offers many advantages over 2D datasets. These may be used for shadow analyses, line of sight predictions and advanced flood simulation. 
+The LoD1 City Model, while basic, offers many advantages over 2D datasets. These may be used for shadow analyses, line of sight predictions, advanced flood simulation, or more advanced quantitative evaluations such as estimating wind comfort factor and simulating noise propogation.
 
 As the  [CityJSONspatialDataScience.ipynb](https://github.com/AdrianKriger/geo3D/blob/main/CityJSONspatialDataScience.ipynb) illustrates population estimation and the calculation of [Building Volume per Capita (Ghosh, T.; et. al.)](https://www.frontiersin.org/articles/10.3389/frsc.2020.00037/full) are also possible.
 
