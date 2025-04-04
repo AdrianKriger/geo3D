@@ -377,7 +377,7 @@ def createSgmts(ac, c, gdf, idx):
 
 
 # # -- create CityJSON
-def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result): 
+def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result, crs): 
     
     #-- create the JSON data structure for the City Model
     cm = {}
@@ -395,7 +395,8 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
     "referenceDate": jparams['cjsn_referenceDate'],
     #"dataSource": jparams['cjsn_source'],
     #"geographicLocation": jparams['cjsn_Locatn'],
-    "referenceSystem": jparams['cjsn_referenceSystem'],
+    #"referenceSystem": jparams['cjsn_referenceSystem'],
+    "referenceSystem": f"https://www.opengis.net/def/crs/EPSG/0/{crs}",
     "geographicalExtent": [
         extent[0],
         extent[1],
@@ -674,7 +675,7 @@ def extrude_int_walls(ring, height, ground, allsurfaces, cm):
     t = len(cm['vertices'])
     allsurfaces.append([[t-4, t-3, t-2, t-1]])
     
-def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, result):
+def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, result, crs):
     """
     basic function to produce LoD1 City Model
     - buildings and terrain
@@ -688,7 +689,7 @@ def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, 
         lsattributes.append(each['properties'])
                
     #- 3D Model
-    cm = doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result)    
+    cm = doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result, crs)    
     
     json_str = json.dumps(cm)#, indent=2)
     fout = open(jparams['cjsn_out'], "w")                 
