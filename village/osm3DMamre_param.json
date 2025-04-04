@@ -3,8 +3,6 @@
     "FocusArea": "Mamre",
     "osm_type": "relation",
     
-    "crs": "EPSG:32734",
-
     "ori-gjson_out": "./data/fp-test.geojson",
     "gjson-proj_out": "./data/fp_proj-test.geojson",
     "osm_bldings": "./data/fp_proj_z-test.geojson",
