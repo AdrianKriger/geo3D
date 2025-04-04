@@ -3,8 +3,6 @@
     "FocusArea": "Observatory",
     "osm_type": "relation",
     
-    "crs": "EPSG:32734",
-
     "ori-gjson_out": "./data/fp-o.geojson",
     "gjson-proj_out": "./data/fp_proj-o.geojson",
     "osm_bldings": "./data/fp_proj_z-o.geojson",
