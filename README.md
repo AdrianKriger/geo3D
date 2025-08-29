@@ -11,3 +11,4 @@
 <!------->
 
 <!--Paper currently under review with the [South African Journal of Geomatics](http://www.sajg.org.za/index.php/sajg/issue/archive)-->
+**License**: Code is MIT; content is CC-BY-SA 4.0. See `NOTICE` for details.
