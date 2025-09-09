@@ -26,7 +26,7 @@ import shapely.geometry as sg
 #from shapely.ops import unary_union, polygonize
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, LinearRing, shape, mapping
 from shapely.ops import snap, unary_union, polygonize, transform
-Efrom shapely.ops import transform
+from shapely.ops import transform
 
 import pyproj
 
