@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# env/geo3D_distV2
+# env/geo3D_gthbRepo02
 #########################
 # helper functions to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
 
@@ -20,19 +20,36 @@ import copy
 
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 
 import shapely.geometry as sg
+#from shapely.ops import unary_union, polygonize
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, LinearRing, shape, mapping
-from shapely.ops import snap
-from shapely.ops import transform
+from shapely.ops import snap, unary_union, polygonize, transform
+Efrom shapely.ops import transform
 
 import pyproj
+
+from osgeo import gdal
 
 from openlocationcode import openlocationcode as olc
 
 from cjio import cityjson, geom_help
 
 dps = 3
+WGS84 = "EPSG:4326"
+
+def _to_wgs84_point(pt, src_crs):
+    """Return (lat, lon) in EPSG:4326 for a Shapely Point in src_crs."""
+    if src_crs is None:
+        # Assume already WGS84 (best-effort)
+        return (pt.y, pt.x)
+    if str(src_crs).upper() in ("EPSG:4326", "WGS84", "OGC:CRS84"):
+        return (pt.y, pt.x)
+    # Reproject
+    project = pyproj.Transformer.from_crs(src_crs, WGS84, always_xy=True).transform
+    x, y = project(pt.x, pt.y)
+    return (y, x)
 
 def calc_Bldheight(data, is_geojson=True, output_file='./data/fp_j.geojson'):
     """Calculate building height and write to GeoJSON from either a GeoJSON dictionary or a GeoDataFrame."""
@@ -112,9 +129,11 @@ def calc_Bldheight(data, is_geojson=True, output_file='./data/fp_j.geojson'):
         f["geometry"] = mapping(osm_shape)
         f["properties"]["footprint"] = mapping(osm_shape)
 
-        # Compute Plus Code
+        # determine input CRS if you have gdf.crs (when not is_geojson)
+        src_crs = data.crs if not is_geojson and hasattr(data, "crs") else None
         p = osm_shape.representative_point()
-        f["properties"]["plus_code"] = olc.encode(p.y, p.x, 11)
+        lat, lon = _to_wgs84_point(p, src_crs)
+        f["properties"]["plus_code"] = olc.encode(lat, lon, 11)
 
         # Compute building height
         levels = float(tags.get('building:levels', 1)) if is_geojson else \
@@ -132,7 +151,6 @@ def calc_Bldheight(data, is_geojson=True, output_file='./data/fp_j.geojson'):
     with open(output_file, 'w') as outfile:
         json.dump(footprints, outfile, indent=2)
         
-
 def process_geometry(geometry):
     """Ensure valid polygon geometry for buildings."""
     if geometry.geom_type == 'LineString':
@@ -200,7 +218,8 @@ def write_geojson(ts, jparams):
     """Process buildings and write results to GeoJSON."""
     storeyheight = 2.8
     footprints = {"type": "FeatureCollection", "features": []}
-    
+    src_crs = getattr(ts, "crs", None)
+
     for _, row in ts.iterrows():
         if row.geometry.geom_type == 'LineString' and len(row.geometry.coords) < 3:
             continue  # Skip invalid geometries
@@ -237,9 +256,10 @@ def write_geojson(ts, jparams):
         f["geometry"] = mapping(osm_shape)
         f["properties"]["footprint"] = mapping(osm_shape)
         
-        # Compute plus_code
+        # Plus code in WGS84
         p = osm_shape.representative_point()
-        f["properties"]["plus_code"] = olc.encode(p.y, p.x, 11)
+        lat, lon = _to_wgs84_point(p, src_crs)
+        f["properties"]["plus_code"] = olc.encode(lat, lon, 11)
         
         # Compute height attributes
         height_attributes = calculate_building_heights(row, storeyheight)
@@ -253,7 +273,6 @@ def write_geojson(ts, jparams):
     with open(jparams['osm_bldings'], 'w') as outfile:
         json.dump(footprints, outfile, indent=2)
         
-
 def getBldVertices(dis, gt_forward, rb):
     """
     retrieve vertices from building footprints ~ without duplicates 
