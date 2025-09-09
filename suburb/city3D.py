@@ -19,13 +19,12 @@ import fiona
 import copy
 
 import numpy as np
+import pandas as pd
 import geopandas as gpd
 
 import shapely.geometry as sg
-#from shapely.ops import unary_union, polygonize
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, LinearRing, shape, mapping
-from shapely.ops import snap, unary_union, polygonize, transform
-from shapely.ops import transform
+from shapely.ops import snap, transform
 
 import pyproj
 
@@ -49,6 +48,10 @@ def _to_wgs84_point(pt, src_crs):
     project = pyproj.Transformer.from_crs(src_crs, WGS84, always_xy=True).transform
     x, y = project(pt.x, pt.y)
     return (y, x)
+
+#def process_geometry(geometry):
+#    """Return a valid Polygon or None (skip if not area)."""
+#    return _ensure_polygon(geometry)
 
 def calc_Bldheight(data, is_geojson=True, output_file='./data/fp_j.geojson'):
     """Calculate building height and write to GeoJSON from either a GeoJSON dictionary or a GeoDataFrame."""
@@ -117,13 +120,18 @@ def calc_Bldheight(data, is_geojson=True, output_file='./data/fp_j.geojson'):
         else:
             f["properties"]["address"] = None  # Set None only if no valid parts exist
 
-        # Convert geometry to a valid polygon
-        osm_shape = shape(row["geometry"]) if is_geojson else row["geometry"]
+        #- Convert geometry to a valid polygon
+        
+        #osm_shape = shape(row["geometry"]) if is_geojson else row["geometry"]
 
-        if osm_shape.geom_type == 'LineString': 
-            osm_shape = Polygon(osm_shape)
-        elif osm_shape.geom_type == 'MultiPolygon': 
-            osm_shape = osm_shape.geoms[0]  # Use first polygon
+        #if osm_shape.geom_type == 'LineString': 
+        #    osm_shape = Polygon(osm_shape)
+        #elif osm_shape.geom_type == 'MultiPolygon': 
+        #    osm_shape = osm_shape.geoms[0]  # Use first polygon
+
+        osm_shape = process_geometry(shape(row["geometry"]) if is_geojson else row["geometry"])
+        if osm_shape is None:
+            continue  # skip non-area/invalid
 
         f["geometry"] = mapping(osm_shape)
         f["properties"]["footprint"] = mapping(osm_shape)
@@ -168,7 +176,6 @@ def extract_address(row):
     tags = row.get('tags', {}) if isinstance(row.get('tags'), dict) else {}
     address_parts = [tags.get(key) for key in address_keys if tags.get(key) is not None]
     return " ".join(address_parts) if address_parts else None
-
 
 def calculate_building_heights(row, storeyheight=2.8):
     """Compute ground, building, and roof heights based on building type."""
@@ -218,7 +225,7 @@ def write_geojson(ts, jparams):
     storeyheight = 2.8
     footprints = {"type": "FeatureCollection", "features": []}
     src_crs = getattr(ts, "crs", None)
-    
+
     for _, row in ts.iterrows():
         if row.geometry.geom_type == 'LineString' and len(row.geometry.coords) < 3:
             continue  # Skip invalid geometries
@@ -272,7 +279,6 @@ def write_geojson(ts, jparams):
     with open(jparams['osm_bldings'], 'w') as outfile:
         json.dump(footprints, outfile, indent=2)
         
-
 def getBldVertices(dis, gt_forward, rb):
     """
     retrieve vertices from building footprints ~ without duplicates 
@@ -325,8 +331,7 @@ def rasterQuery2(mx, my, gt_forward, rb):
 
     return intval[0][0]
 
-
-##- wip
+##- 
 def getAOIVertices(aoi, gt_forward, rb): 
     """
     retrieve vertices from aoi ~ without duplicates 
@@ -421,8 +426,8 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
         extent[0],
         extent[1],
         minz ,
-        extent[1],
-        extent[1],
+        extent[2],
+        extent[3],
         maxz
       ],
     "datasetPointOfContact": {
@@ -710,7 +715,6 @@ def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, 
                
     #- 3D Model
     cm = doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result, crs)    
-    
     json_str = json.dumps(cm)#, indent=2)
     fout = open(jparams['cjsn_out'], "w")                 
     fout.write(json_str)  
