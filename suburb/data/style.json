@@ -1,0 +1,146 @@
+{
+  "version": 8,
+  "name": "Dark Matter Extended",
+  "sources": {
+    "capeTown": {
+      "type": "vector",
+      "tiles": ["http://localhost:8000/{z}/{x}/{y}.pbf"],
+      "minzoom": 0,
+      "maxzoom": 14
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#0e0e0e"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "capeTown",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#1a1a2e"
+      }
+    },
+    {
+      "id": "park",
+      "type": "fill",
+      "source": "capeTown",
+      "source-layer": "landuse",
+      "filter": ["in", "class", "park", "recreation_ground", "cemetery", "forest"],
+      "paint": {
+        "fill-color": "#16213e",
+        "fill-opacity": 0.4
+      }
+    },
+{
+  "id": "road-motorway",
+  "type": "line",
+  "source": "capeTown",
+  "source-layer": "transportation",
+  "filter": ["==", "class", "motorway"],
+  "paint": {
+    "line-color": "#a0a4a8", 
+    "line-width": [
+      "interpolate", ["linear"], ["zoom"],
+      6, 0.5,
+      12, 2,
+      16, 5
+    ]
+  }
+},
+{
+  "id": "road-primary",
+  "type": "line",
+  "source": "capeTown",
+  "source-layer": "transportation",
+  "filter": ["==", "class", "primary"],
+  "paint": {
+    "line-color": "#8b8f94",
+    "line-width": [
+      "interpolate", ["linear"], ["zoom"],
+      8, 0.5,
+      12, 1.5,
+      16, 3.5
+    ]
+  }
+},
+{
+  "id": "road-secondary",
+  "type": "line",
+  "source": "capeTown",
+  "source-layer": "transportation",
+  "filter": ["==", "class", "secondary"],
+  "paint": {
+    "line-color": "#6d7177",
+    "line-width": [
+      "interpolate", ["linear"], ["zoom"],
+      8, 0.25,
+      12, 1,
+      16, 2.5
+    ]
+  }
+},
+{
+  "id": "road-tertiary",
+  "type": "line",
+  "source": "capeTown",
+  "source-layer": "transportation",
+  "filter": ["==", "class", "tertiary"],
+  "paint": {
+    "line-color": "#55595e",
+    "line-width": [
+      "interpolate", ["linear"], ["zoom"],
+      10, 0.25,
+      14, 1,
+      16, 2
+    ]
+  }
+},
+{
+  "id": "road-residential",
+  "type": "line",
+  "source": "capeTown",
+  "source-layer": "transportation",
+  "filter": ["==", "class", "residential"],
+  "paint": {
+    "line-color": "#404448",
+    "line-width": [
+      "interpolate", ["linear"], ["zoom"],
+      12, 0.25,
+      14, 0.75,
+      16, 1.5
+    ]
+  }
+},
+{
+  "id": "road-service",
+  "type": "line",
+  "source": "capeTown",
+  "source-layer": "transportation",
+  "filter": ["in", "class", "service", "track", "minor"],
+  "paint": {
+    "line-color": "#2f3336",
+    "line-width": [
+      "interpolate", ["linear"], ["zoom"],
+      12, 0.1,
+      16, 0.75
+    ]
+  }
+},
+    {
+      "id": "buildings",
+      "type": "fill",
+      "source": "capeTown",
+      "source-layer": "building",
+      "paint": {
+        "fill-color": "#30363d",
+        "fill-opacity": 0.7
+      }
+    }
+  ]
+}
