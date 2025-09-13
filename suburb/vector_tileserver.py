@@ -11,10 +11,11 @@ app = Flask(__name__)
 AREA_NAME = None
 MBTILES_PATH = None
 
-def configure(area_name):
-    global AREA_NAME, MBTILES_PATH
+def configure(area_name, port=8000):
+    global AREA_NAME, MBTILES_PATH, PORT
     AREA_NAME = area_name
     MBTILES_PATH = os.path.join(os.path.dirname(__file__), "data", f"{AREA_NAME}.mbtiles")
+    PORT = port
 
 def run(port=8000):
     app.run(host="0.0.0.0", port=port)
@@ -48,7 +49,7 @@ def tilejson():
         "tilejson": "2.2.0",
         "name": AREA_NAME,
         "scheme": "xyz",
-        "tiles": ["http://localhost:8000/{z}/{x}/{y}.pbf"],
+        "tiles": [f"http://localhost:{PORT}/{{z}}/{{x}}/{{y}}.pbf"],
         "minzoom": 0,
         "maxzoom": 14
     }
