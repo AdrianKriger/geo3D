@@ -1,4 +1,12 @@
 # vector_tileserver02.py
+#########################
+# helper functions to render .mbtiles as a basemap inside pydeck
+
+# author: arkriger - 2023 - 2025
+# github: https://github.com/AdrianKriger/geo3D
+
+#########################
+
 from flask import Flask, Response, abort
 import sqlite3
 import os
@@ -6,8 +14,6 @@ import os
 app = Flask(__name__)
 
 # Path to your MBTiles file
-#AREA_NAME = "capeTown"
-#MBTILES_PATH = os.path.join(os.path.dirname(__file__), "data", f"{AREA_NAME}.mbtiles")
 AREA_NAME = None
 MBTILES_PATH = None
 
@@ -17,8 +23,8 @@ def configure(area_name, port=8000):
     MBTILES_PATH = os.path.join(os.path.dirname(__file__), "data", f"{AREA_NAME}.mbtiles")
     PORT = port
 
-def run(port=8000):
-    app.run(host="0.0.0.0", port=port)
+#def run(port=8000):
+    #app.run(port=port)#, host="0.0.0.0")
 
 def get_connection():
     return sqlite3.connect(MBTILES_PATH)
