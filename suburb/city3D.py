@@ -77,7 +77,7 @@ def process_and_write_geojson(gdf, crs, jparams=None): #, output_file='./data/fp
 
     # Process geometry to ensure all are polygons
     filtered_gdf['geometry'] = filtered_gdf['geometry'].apply(process_geometry)
-    filtered_gdf['footprint'] = filtered_gdf['geometry'].apply(lambda g: mapping(g))
+    filtered_gdf['footprint'] = filtered_gdf['geometry'].apply(lambda g: mapping(g)["coordinates"]) 
     filtered_gdf = filtered_gdf[filtered_gdf['geometry'].notna()]
 
     # 2. Add new columns using vectorized operations (faster than iterrows)
