@@ -34,7 +34,7 @@ The purpose of this work aims to enrich geography and sustainable development ed
 
 | [Village](https://github.com/AdrianKriger/geo3D/tree/main/village) | [Suburb](https://github.com/AdrianKriger/geo3D/tree/main/village) |
 | :-----: | :-----: |
-| If your Area-of-Interest (aoi) has **less than** <br /> **2 500** buildings, you are welcome to choose [village](https://github.com/AdrianKriger/geo3D/tree/main/village) | Please choose [suburb](https://github.com/AdrianKriger/geo3D/tree/main/suburb) if your aoi **has more than 2 500** buildings <br /> *this processing option caters for regions with no internet access* |
+| If your Area-of-Interest (aoi) has **less than** <br /> **2 500** buildings, you are welcome to choose [village](https://github.com/AdrianKriger/geo3D/tree/main/village) | Please choose [suburb](https://github.com/AdrianKriger/geo3D/tree/main/suburb) if your aoi **has more than 2 500** buildings <br /><br /> *this processing option caters for regions with no internet access* |
 
 <!--<table>
   <tr>
