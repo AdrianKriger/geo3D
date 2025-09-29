@@ -145,7 +145,7 @@ def extract_address(row):
     Extract and format address components from a DataFrame row.
     """
     address_keys = [
-        'addr:housename', 'addr:flats', 'addr:housenumber', 'addr:street',
+        'name', 'addr:housename', 'addr:flats', 'addr:housenumber', 'addr:street',
         'addr:suburb', 'addr:postcode', 'addr:city', 'addr:province'
     ]
     # Filter for valid, non-null values from the row
