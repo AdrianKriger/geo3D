@@ -17,6 +17,7 @@
 import json
 import fiona
 import copy
+import requests
 
 import numpy as np
 import pandas as pd
@@ -36,6 +37,196 @@ from cjio import cityjson, geom_help
 
 dps = 3
 WGS84 = "EPSG:4326"
+
+def osm2gdf(data):
+    """Convert Overpass JSON to list of dicts with geometry + properties."""
+    nodes = {}
+    ways = {}
+    
+    # First pass: collect nodes and ways
+    for el in data:
+        if el["type"] == "node":
+            # Check if geometry is already provided
+            if "lat" in el and "lon" in el:
+                nodes[el["id"]] = (el["lon"], el["lat"])
+            elif "geometry" in el and len(el["geometry"]) > 0:
+                pt = el["geometry"][0]
+                nodes[el["id"]] = (pt["lon"], pt["lat"])
+        elif el["type"] == "way":
+            # Check if geometry is already provided (Overpass geom output)
+            if "geometry" in el:
+                coords = [(pt["lon"], pt["lat"]) for pt in el["geometry"]]
+            else:
+                # Fall back to node references
+                coords = [nodes.get(n) for n in el.get("nodes", [])]
+                if None in coords:
+                    continue
+            ways[el["id"]] = coords
+    
+    def assemble_rings(way_segments):
+        """Assemble multiple way segments into one or more closed rings."""
+        if not way_segments:
+            return []
+        
+        rings = []
+        remaining = [list(seg) for seg in way_segments]
+        
+        while remaining:
+            # Start a new ring with the first remaining segment
+            ring = remaining.pop(0)
+            
+            # Try to extend this ring
+            made_progress = True
+            while made_progress and remaining:
+                made_progress = False
+                for i, segment in enumerate(remaining):
+                    # Try connecting to end
+                    if ring[-1] == segment[0]:
+                        ring.extend(segment[1:])
+                        remaining.pop(i)
+                        made_progress = True
+                        break
+                    elif ring[-1] == segment[-1]:
+                        ring.extend(reversed(segment[:-1]))
+                        remaining.pop(i)
+                        made_progress = True
+                        break
+                    # Try connecting to start
+                    elif ring[0] == segment[-1]:
+                        ring = segment[:-1] + ring
+                        remaining.pop(i)
+                        made_progress = True
+                        break
+                    elif ring[0] == segment[0]:
+                        ring = list(reversed(segment))[:-1] + ring
+                        remaining.pop(i)
+                        made_progress = True
+                        break
+                
+                # Check if ring is closed
+                if ring[0] == ring[-1]:
+                    break
+            
+            # Ensure closed
+            if ring[0] != ring[-1]:
+                ring.append(ring[0])
+            
+            # Only add valid rings
+            if len(ring) >= 4:
+                rings.append(ring)
+        
+        return rings
+    
+    results = []
+    for el in data:
+        tags = el.get("tags", {})
+        geom = None
+        
+        # ---- Node
+        if el["type"] == "node":
+            if "geometry" in el and len(el["geometry"]) > 0:
+                pt = el["geometry"][0]
+                geom = Point(pt["lon"], pt["lat"])
+            elif "lat" in el and "lon" in el:
+                geom = Point(el["lon"], el["lat"])
+        
+        # ---- Way
+        elif el["type"] == "way":
+            coords = ways.get(el["id"])
+            if not coords:
+                continue
+            if coords[0] == coords[-1] and len(coords) >= 4:
+                geom = Polygon(coords)  # closed ring
+            else:
+                geom = LineString(coords)
+        
+        # ---- Relation (multipolygon or other types)
+        elif el["type"] == "relation":
+            # Handle multipolygon relations
+            if tags.get("type") == "multipolygon":
+                outer_ways = []
+                inner_ways = []
+                
+                for m in el.get("members", []):
+                    if m["type"] == "way":
+                        coords = None
+                        # Check if member has direct geometry embedded
+                        if "geometry" in m:
+                            coords = [(pt["lon"], pt["lat"]) for pt in m["geometry"]]
+                        elif m.get("ref") in ways:
+                            coords = ways[m.get("ref")]
+                        
+                        if not coords:
+                            continue
+                        
+                        if m.get("role") == "outer":
+                            outer_ways.append(coords)
+                        elif m.get("role") == "inner":
+                            inner_ways.append(coords)
+                
+                # Assemble outer rings (can be multiple)
+                outer_rings = assemble_rings(outer_ways)
+                outers = [Polygon(ring) for ring in outer_rings]
+                
+                # Assemble inner rings (can be multiple)
+                inner_rings = assemble_rings(inner_ways)
+                inners = [Polygon(ring) for ring in inner_rings]
+                
+                if outers:
+                    polys = []
+                    for outer in outers:
+                        # Find which inners belong to this outer
+                        holes = [inner.exterior.coords for inner in inners if inner.within(outer)]
+                        polys.append(Polygon(outer.exterior.coords, holes))
+                    geom = MultiPolygon(polys) if len(polys) > 1 else polys[0]
+            
+            # Handle other relation types (boundaries, etc.)
+            elif tags.get("type") in ["boundary", None]:
+                # Try to assemble from outer members
+                outer_ways = []
+                for m in el.get("members", []):
+                    if m["type"] == "way":
+                        coords = None
+                        if "geometry" in m:
+                            coords = [(pt["lon"], pt["lat"]) for pt in m["geometry"]]
+                        elif m.get("ref") in ways:
+                            coords = ways[m.get("ref")]
+                        
+                        if coords:
+                            outer_ways.append(coords)
+                
+                if outer_ways:
+                    rings = assemble_rings(outer_ways)
+                    if rings:
+                        if len(rings) == 1:
+                            geom = Polygon(rings[0])
+                        else:
+                            geom = MultiPolygon([Polygon(ring) for ring in rings])
+        
+        if geom:
+            results.append({
+                "geometry": geom,
+                "properties": tags,
+                "id": el["id"]
+            })
+    
+    return results
+
+def overpass_to_gdf(query, url="https://overpass-api.de/api/interpreter"):
+    """Run an Overpass query and return GeoDataFrame."""
+    r = requests.get(url, params={"data": query})
+    #r.raise_for_status()
+    data = r.json()["elements"]
+
+    shapes = osm2gdf(data)
+    geoms = [s["geometry"] for s in shapes]
+    props = [s["properties"] for s in shapes]
+    osm_ids = [s["id"] for s in shapes]
+
+    gdf = gpd.GeoDataFrame(props, geometry=geoms, crs="EPSG:4326")
+    gdf['osm_id'] = osm_ids
+    
+    return data, gdf
 
 def to_wgs84_point(point, src_crs=None):
     """
@@ -329,6 +520,7 @@ def createSgmts(ac, c, gdf, idx):
 
 
 # # -- create CityJSON
+#def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result, crs): 
 def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, crs): 
     
     #-- create the JSON data structure for the City Model
@@ -454,14 +646,24 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
             oring.reverse()
         
         if lsattributes[i]['building'] == 'bridge':
+            #edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
+            #extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_bridge_height'], 
+            #              allsurfaces, cm, edges)
             extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_bridge_height'], allsurfaces, cm)
             count = count + 1
 
         if lsattributes[i]['building'] == 'roof':
+            #edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
+            #extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_roof_height'], 
+            #              allsurfaces, cm, edges)
             extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_roof_height'], allsurfaces, cm)
             count = count + 1
 
         if lsattributes[i]['building'] != 'bridge' and lsattributes[i]['building'] != 'roof':
+            #new_edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
+            #new_edges = [[min_zbld[i-count]] + sub_list for sub_list in new_edges]
+            #extrude_walls(oring, lsattributes[i]['roof_height'], min_zbld[i-count], 
+            #              allsurfaces, cm, new_edges)
             extrude_walls(oring, lsattributes[i]['roof_height'], min_zbld[i-count], allsurfaces, cm)
        
         #-- interior rings of each footprint
@@ -476,6 +678,7 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
                 iring.reverse() 
             
             irings.append(iring)
+            #extrude_int_walls(iring, lsattributes[i]['roof_height'], min_zbld[i-count], allsurfaces, cm)
             extrude_walls(iring, lsattributes[i]['roof_height'], min_zbld[i-count], allsurfaces, cm)
 
         #-- top-bottom surfaces
@@ -513,6 +716,7 @@ def add_terrain_b(Terr, allsurfaces):
     for i in Terr:
         allsurfaces.append([[i[0], i[1], i[2]]]) 
         
+#- new
 def extrude_roof_ground(orng, irngs, height, reverse, allsurfaces, cm):
     oring = copy.deepcopy(orng)
     irings = copy.deepcopy(irngs)
@@ -556,7 +760,114 @@ def extrude_walls(ring, height, ground, allsurfaces, cm):
     t = len(cm['vertices'])
     allsurfaces.append([[t-4, t-3, t-2, t-1]])
 
-
+#def extrude_roof_ground(orng, irngs, height, reverse, allsurfaces, cm):
+#    oring = copy.deepcopy(orng)
+#    irings = copy.deepcopy(irngs)
+#    #irings2 = []
+#    if reverse == True:
+#        oring.reverse()
+#        for each in irings:
+#            each.reverse()
+#    for (i, pt) in enumerate(oring):
+#        cm['vertices'].append([round(pt[0], dps), round(pt[1], dps), height])
+#        oring[i] = (len(cm['vertices']) - 1)
+#    for (i, iring) in enumerate(irings):
+#        for (j, pt) in enumerate(iring):
+#            cm['vertices'].append([round(pt[0], dps), round(pt[1], dps), height])
+#            irings[i][j] = (len(cm['vertices']) - 1)
+#    output = []
+#    output.append(oring)
+#    for each in irings:
+#        output.append(each)
+#    allsurfaces.append(output)
+#    
+#def extrude_walls(ring, height, ground, allsurfaces, cm, edges):  
+#    #-- each edge become a wall, ie a rectangle
+#    for (j, v) in enumerate(ring[:-1]):
+#        #- if iether the left or right vertex has more than 2 heights [grnd and roof] incident:
+#        if len(edges[j]) > 2 or len(edges[j+1]) > 2:
+#            cm['vertices'].append([round(ring[j][0], dps), round(ring[j][1], dps), edges[j][0]])
+#            cm['vertices'].append([round(ring[j+1][0], dps), round(ring[j+1][1], dps), edges[j+1][0]])
+#            c = 0
+#            #- traverse up [grnd-roof]:
+#            for i, o in enumerate(edges[j+1][1:]):
+#                cm['vertices'].append([round(ring[j+1][0], dps), round(ring[j+1][1], dps), o])
+#                c = c + 1
+#            #- traverse down [roof-grnd]:
+#            for i in edges[j][::-1][:-1]:
+#                cm['vertices'].append([round(ring[j][0], dps), round(ring[j][1], dps), i])
+#                c = c + 1
+#            t = len(cm['vertices'])
+#            c = c + 2
+#            b = c
+#            l = []
+#            for i in range(c):
+#                l.append(t-b)
+#                b = b - 1 
+#            allsurfaces.append([l])
+#
+#        #- if iether the left and right vertex has only 2 heights [grnd and roof] incident: 
+#        if len(edges[j]) == 2 and len(edges[j+1]) == 2:
+#            cm['vertices'].append([round(ring[j][0], dps),   round(ring[j][1], dps),   edges[j][0]])
+#            cm['vertices'].append([round(ring[j+1][0], dps), round(ring[j+1][1], dps), edges[j+1][0]])
+#            cm['vertices'].append([round(ring[j+1][0], dps), round(ring[j+1][1], dps), edges[j+1][1]])
+#            cm['vertices'].append([round(ring[j][0], dps),   round(ring[j][1], dps),   edges[j][1]])
+#            t = len(cm['vertices'])
+#            allsurfaces.append([[t-4, t-3, t-2, t-1]])
+#    
+#    #- last edge polygon
+#    if len(edges[-1]) == 2 and len(edges[0]) == 2:
+#        cm['vertices'].append([round(ring[-1][0], dps),  round(ring[-1][1], dps), edges[-1][0]]) 
+#        cm['vertices'].append([round(ring[0][0], dps), round(ring[0][1], dps), edges[0][0]])
+#        cm['vertices'].append([round(ring[0][0], dps),  round(ring[0][1], dps),  edges[0][1]])
+#        cm['vertices'].append([round(ring[-1][0], dps), round(ring[-1][1], dps), edges[-1][1]])
+#        t = len(cm['vertices'])
+#        allsurfaces.append([[t-4, t-3, t-2, t-1]])
+#        
+#    #- last edge polygon   
+#    if len(edges[-1]) > 2 or len(edges[0]) > 2:
+#        c = 0
+#        cm['vertices'].append([round(ring[-1][0], dps),   round(ring[-1][1], dps),   edges[-1][0]])
+#        cm['vertices'].append([round(ring[0][0], dps), round(ring[0][1], dps), edges[0][0]])
+#        for i, o in enumerate(edges[0][1:]):
+#            cm['vertices'].append([round(ring[0][0], dps), round(ring[0][1], dps), o])
+#            c = c + 1
+#        for i in edges[-1][::-1][:-1]:
+#            cm['vertices'].append([round(ring[-1][0], dps),   round(ring[-1][1], dps),   i])
+#            c = c + 1
+#        t = len(cm['vertices'])
+#        c = c + 2
+#        b = c
+#        l = []
+#        for i in range(c): 
+#            l.append(t-b)
+#            b = b - 1 
+#        allsurfaces.append([l])
+#               
+#def extrude_int_walls(ring, height, ground, allsurfaces, cm):
+#    #-- each edge become a wall, ie a rectangle
+#    for (j, v) in enumerate(ring[:-1]):
+#        #l = []
+#        cm['vertices'].append([round(ring[j][0], dps),   round(ring[j][1], dps),   ground])
+#        #values.append(0)
+#        cm['vertices'].append([round(ring[j+1][0], dps), round(ring[j+1][1], dps), ground])
+#        #values.append(0)
+#        cm['vertices'].append([round(ring[j+1][0], dps), round(ring[j+1][1], dps), height])
+#        cm['vertices'].append([round(ring[j][0], dps), round(ring[j][1], dps), height])
+#        t = len(cm['vertices'])
+#        allsurfaces.append([[t-4, t-3, t-2, t-1]])    
+#    #-- last-first edge
+#    #l = []
+#    cm['vertices'].append([round(ring[-1][0], dps), round(ring[-1][1], dps), ground])
+#    #values.append(0)
+#    cm['vertices'].append([round(ring[0][0], dps), round(ring[0][1], dps), ground])
+#    cm['vertices'].append([round(ring[0][0], dps), round(ring[0][1], dps), height])
+#    #values.append(0)
+#    cm['vertices'].append([round(ring[-1][0], dps), round(ring[-1][1], dps), height])
+#    t = len(cm['vertices'])
+#    allsurfaces.append([[t-4, t-3, t-2, t-1]])
+    
+#def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, result, crs):
 def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, crs):
 
     """
@@ -572,6 +883,7 @@ def output_cityjson(extent, minz, maxz, TerrainT, pts, jparams, min_zbld, acoi, 
         lsattributes.append(each['properties'])
                
     #- 3D Model
+    #cm = doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, result, crs)    
     cm = doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi, jparams, min_zbld, crs)    
     json_str = json.dumps(cm)#, indent=2)
     fout = open(jparams['cjsn_out'], "w")                 

@@ -17,6 +17,7 @@
 import json
 import fiona
 import copy
+import requests
 
 import numpy as np
 import pandas as pd
@@ -36,6 +37,196 @@ from cjio import cityjson, geom_help
 
 dps = 3
 WGS84 = "EPSG:4326"
+
+def osm2gdf(data):
+    """Convert Overpass JSON to list of dicts with geometry + properties."""
+    nodes = {}
+    ways = {}
+    
+    # First pass: collect nodes and ways
+    for el in data:
+        if el["type"] == "node":
+            # Check if geometry is already provided
+            if "lat" in el and "lon" in el:
+                nodes[el["id"]] = (el["lon"], el["lat"])
+            elif "geometry" in el and len(el["geometry"]) > 0:
+                pt = el["geometry"][0]
+                nodes[el["id"]] = (pt["lon"], pt["lat"])
+        elif el["type"] == "way":
+            # Check if geometry is already provided (Overpass geom output)
+            if "geometry" in el:
+                coords = [(pt["lon"], pt["lat"]) for pt in el["geometry"]]
+            else:
+                # Fall back to node references
+                coords = [nodes.get(n) for n in el.get("nodes", [])]
+                if None in coords:
+                    continue
+            ways[el["id"]] = coords
+    
+    def assemble_rings(way_segments):
+        """Assemble multiple way segments into one or more closed rings."""
+        if not way_segments:
+            return []
+        
+        rings = []
+        remaining = [list(seg) for seg in way_segments]
+        
+        while remaining:
+            # Start a new ring with the first remaining segment
+            ring = remaining.pop(0)
+            
+            # Try to extend this ring
+            made_progress = True
+            while made_progress and remaining:
+                made_progress = False
+                for i, segment in enumerate(remaining):
+                    # Try connecting to end
+                    if ring[-1] == segment[0]:
+                        ring.extend(segment[1:])
+                        remaining.pop(i)
+                        made_progress = True
+                        break
+                    elif ring[-1] == segment[-1]:
+                        ring.extend(reversed(segment[:-1]))
+                        remaining.pop(i)
+                        made_progress = True
+                        break
+                    # Try connecting to start
+                    elif ring[0] == segment[-1]:
+                        ring = segment[:-1] + ring
+                        remaining.pop(i)
+                        made_progress = True
+                        break
+                    elif ring[0] == segment[0]:
+                        ring = list(reversed(segment))[:-1] + ring
+                        remaining.pop(i)
+                        made_progress = True
+                        break
+                
+                # Check if ring is closed
+                if ring[0] == ring[-1]:
+                    break
+            
+            # Ensure closed
+            if ring[0] != ring[-1]:
+                ring.append(ring[0])
+            
+            # Only add valid rings
+            if len(ring) >= 4:
+                rings.append(ring)
+        
+        return rings
+    
+    results = []
+    for el in data:
+        tags = el.get("tags", {})
+        geom = None
+        
+        # ---- Node
+        if el["type"] == "node":
+            if "geometry" in el and len(el["geometry"]) > 0:
+                pt = el["geometry"][0]
+                geom = Point(pt["lon"], pt["lat"])
+            elif "lat" in el and "lon" in el:
+                geom = Point(el["lon"], el["lat"])
+        
+        # ---- Way
+        elif el["type"] == "way":
+            coords = ways.get(el["id"])
+            if not coords:
+                continue
+            if coords[0] == coords[-1] and len(coords) >= 4:
+                geom = Polygon(coords)  # closed ring
+            else:
+                geom = LineString(coords)
+        
+        # ---- Relation (multipolygon or other types)
+        elif el["type"] == "relation":
+            # Handle multipolygon relations
+            if tags.get("type") == "multipolygon":
+                outer_ways = []
+                inner_ways = []
+                
+                for m in el.get("members", []):
+                    if m["type"] == "way":
+                        coords = None
+                        # Check if member has direct geometry embedded
+                        if "geometry" in m:
+                            coords = [(pt["lon"], pt["lat"]) for pt in m["geometry"]]
+                        elif m.get("ref") in ways:
+                            coords = ways[m.get("ref")]
+                        
+                        if not coords:
+                            continue
+                        
+                        if m.get("role") == "outer":
+                            outer_ways.append(coords)
+                        elif m.get("role") == "inner":
+                            inner_ways.append(coords)
+                
+                # Assemble outer rings (can be multiple)
+                outer_rings = assemble_rings(outer_ways)
+                outers = [Polygon(ring) for ring in outer_rings]
+                
+                # Assemble inner rings (can be multiple)
+                inner_rings = assemble_rings(inner_ways)
+                inners = [Polygon(ring) for ring in inner_rings]
+                
+                if outers:
+                    polys = []
+                    for outer in outers:
+                        # Find which inners belong to this outer
+                        holes = [inner.exterior.coords for inner in inners if inner.within(outer)]
+                        polys.append(Polygon(outer.exterior.coords, holes))
+                    geom = MultiPolygon(polys) if len(polys) > 1 else polys[0]
+            
+            # Handle other relation types (boundaries, etc.)
+            elif tags.get("type") in ["boundary", None]:
+                # Try to assemble from outer members
+                outer_ways = []
+                for m in el.get("members", []):
+                    if m["type"] == "way":
+                        coords = None
+                        if "geometry" in m:
+                            coords = [(pt["lon"], pt["lat"]) for pt in m["geometry"]]
+                        elif m.get("ref") in ways:
+                            coords = ways[m.get("ref")]
+                        
+                        if coords:
+                            outer_ways.append(coords)
+                
+                if outer_ways:
+                    rings = assemble_rings(outer_ways)
+                    if rings:
+                        if len(rings) == 1:
+                            geom = Polygon(rings[0])
+                        else:
+                            geom = MultiPolygon([Polygon(ring) for ring in rings])
+        
+        if geom:
+            results.append({
+                "geometry": geom,
+                "properties": tags,
+                "id": el["id"]
+            })
+    
+    return results
+
+def overpass_to_gdf(query, url="https://overpass-api.de/api/interpreter"):
+    """Run an Overpass query and return GeoDataFrame."""
+    r = requests.get(url, params={"data": query})
+    #r.raise_for_status()
+    data = r.json()["elements"]
+
+    shapes = osm2gdf(data)
+    geoms = [s["geometry"] for s in shapes]
+    props = [s["properties"] for s in shapes]
+    osm_ids = [s["id"] for s in shapes]
+
+    gdf = gpd.GeoDataFrame(props, geometry=geoms, crs="EPSG:4326")
+    gdf['osm_id'] = osm_ids
+    
+    return data, gdf
 
 def to_wgs84_point(point, src_crs=None):
     """
