@@ -492,7 +492,7 @@ def process_and_write_geojson(gdf, jparams=None): #, output_file='./data/fp_j.ge
         #'id', 
         'osm_id', 'address', 'building', 'building:levels', 'building:use',
         'building:flats', 'building:units', 'beds', 'rooms', 'residential',
-        'amenity', 'social_facility', 'building_height', 'roof_height',
+        'amenity', 'social_facility', 'operator', 'building_height', 'roof_height',
         'ground_height', 'bottom_bridge_height', 'bottom_roof_height',
         'plus_code', 'footprint', 'geometry'
     ]
