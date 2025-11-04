@@ -348,12 +348,6 @@ def osm2gdf(data):
     
     return results
 
-#def coords_to_list(coords):
-#    """Recursively convert tuples in coordinates to lists for PyDeck."""
-#    if isinstance(coords, (float, int)):
-#        return coords
-#    return [coords_to_list(c) for c in coords]
-
 def overpass_to_gdf(query, url="https://overpass-api.de/api/interpreter", geojson=False):
     """Run an Overpass query and return GeoDataFrame or PyDeck-ready GeoJSON."""
     r = requests.get(url, params={"data": query})
@@ -402,8 +396,6 @@ def overpass_to_gdf(query, url="https://overpass-api.de/api/interpreter", geojso
             "features": features
         }
 
-        #with open(output_path, "w", encoding="utf-8") as f:
-        #    json.dump(geojson, f, indent=2, ensure_ascii=False)
         return geojson
     else:
         return df
@@ -425,10 +417,6 @@ def to_wgs84_point(point, src_crs=None):
     else: 
         return point.y, point.x
 
-#def process_geometry(geometry):
-#    """Return a valid Polygon or None (skip if not area)."""
-#    return _ensure_polygon(geometry)
-
 def safe_json_value(val):
     """Convert pandas/NumPy values safely for JSON serialization."""
     if val is None or (isinstance(val, float) and math.isnan(val)):
@@ -447,8 +435,6 @@ def process_and_write_geojson(gdf, jparams=None): #, output_file='./data/fp_j.ge
         gdf (gpd.GeoDataFrameLite): The input GeoDataFrameLite with building data.
         output_file (str): The path to the output GeoJSON file.
     """
-    #df = gdf.set_crs(WGS84[5:])
-    #src_crs = getattr(gdf, "crs", None)
     crs = gdf.crs
 
     # 1. Filter out rows with missing 'building:levels'
@@ -473,7 +459,6 @@ def process_and_write_geojson(gdf, jparams=None): #, output_file='./data/fp_j.ge
     height_cols_to_drop = [col for col in height_df.columns if col in filtered_gdf.columns]
     if height_cols_to_drop:
         filtered_gdf = filtered_gdf.drop(columns=height_cols_to_drop)
-    #filtered_gdf = pd.concat([filtered_gdf.reset_index(drop=True), height_df.reset_index(drop=True)], axis=1)
     filtered_gdf = filtered_gdf.assign(**height_df)
 
     # 3. Add address and plus_code columns
@@ -499,9 +484,6 @@ def process_and_write_geojson(gdf, jparams=None): #, output_file='./data/fp_j.ge
     # Ensure the output columns are unique before reindexing
     final_output_cols = [c for c in output_cols if c in filtered_gdf.columns]
     
-    #final_gdf = filtered_gdf.filter(items=output_cols).copy()
-    #final_gdf = filtered_gdf.reindex(columns=final_output_cols, fill_value=None).copy()
-    #filtered_gdf = filtered_gdf.loc[:, ~filtered_gdf.columns.duplicated()]
     final_gdf = filtered_gdf[final_output_cols].copy()
 
     # -- Only write GeoJSON if jparams provided
@@ -568,7 +550,6 @@ def extract_address(row):
         'addr:suburb', 'addr:postcode', 'addr:city', 'addr:province'
     ]
     # Filter for valid, non-null values from the row
-    #address_parts = [row.get(key) for key in address_keys if row.get(key) not in [None, ""]]
     address_parts = [
         str(row.get(key)) for key in address_keys 
         if row.get(key) not in [None, ""] and pd.notna(row.get(key))
@@ -928,24 +909,14 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
             oring.reverse()
         
         if lsattributes[i]['building'] == 'bridge':
-            #edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
-            #extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_bridge_height'], 
-            #              allsurfaces, cm, edges)
             extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_bridge_height'], allsurfaces, cm)
             count = count + 1
 
         if lsattributes[i]['building'] == 'roof':
-            #edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
-            #extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_roof_height'], 
-            #              allsurfaces, cm, edges)
             extrude_walls(oring, lsattributes[i]['roof_height'], lsattributes[i]['bottom_roof_height'], allsurfaces, cm)
             count = count + 1
 
         if lsattributes[i]['building'] != 'bridge' and lsattributes[i]['building'] != 'roof':
-            #new_edges = [[ele for ele in sub if ele <= lsattributes[i]['roof_height']] for sub in poly]
-            #new_edges = [[min_zbld[i-count]] + sub_list for sub_list in new_edges]
-            #extrude_walls(oring, lsattributes[i]['roof_height'], min_zbld[i-count], 
-            #              allsurfaces, cm, new_edges)
             extrude_walls(oring, lsattributes[i]['roof_height'], min_zbld[i-count], allsurfaces, cm)
        
         #-- interior rings of each footprint
@@ -960,7 +931,6 @@ def doVcBndGeomRd(lsgeom, lsattributes, extent, minz, maxz, TerrainT, pts, acoi,
                 iring.reverse() 
             
             irings.append(iring)
-            #extrude_int_walls(iring, lsattributes[i]['roof_height'], min_zbld[i-count], allsurfaces, cm)
             extrude_walls(iring, lsattributes[i]['roof_height'], min_zbld[i-count], allsurfaces, cm)
 
         #-- top-bottom surfaces
