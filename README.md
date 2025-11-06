@@ -1,7 +1,6 @@
-# geo3D
-
 [![DOI](https://zenodo.org/badge/762940234.svg)](https://doi.org/10.5281/zenodo.17541756)
 
+# geo3D
 3D City Models &amp; Spatial Data Science for Geography and Sustainable Development Education.
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AdrianKriger/geo3D/HEAD)
