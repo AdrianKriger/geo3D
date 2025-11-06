@@ -1,4 +1,7 @@
 # geo3D
+
+[![DOI](https://zenodo.org/badge/762940234.svg)](https://doi.org/10.5281/zenodo.17541756)
+
 3D City Models &amp; Spatial Data Science for Geography and Sustainable Development Education.
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/AdrianKriger/geo3D/HEAD)
@@ -12,3 +15,4 @@
 
 <!--Paper currently under review with the [South African Journal of Geomatics](http://www.sajg.org.za/index.php/sajg/issue/archive)-->
 **License**: Code is MIT; content is CC-BY-SA 4.0. See `NOTICE` for details.
+
