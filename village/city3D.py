@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-# env/geo3D_gthbRepo02
+# env/geo3D_gthbRepo07
 #########################
 # helper functions to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
 
-# author: arkriger - 2023 - 2025
+# author: arkriger - 2023 - 2026
 # github: https://github.com/AdrianKriger/geo3D
 
 # script credit:
