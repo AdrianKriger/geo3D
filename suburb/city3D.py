@@ -3,7 +3,7 @@
 #########################
 # helper functions to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
 
-# author: arkriger - 2023 - 2025
+# author: arkriger - 2023 - 2026
 # github: https://github.com/AdrianKriger/geo3D
 
 # script credit:
@@ -1109,3 +1109,196 @@ def extract_boundaries_by_name(input_pbf, jparams):
 
     return gdf
 
+def _harvestSolar(input_pbf, minx, miny, maxx, maxy, epsg):
+    gdal.UseExceptions()
+    gdal.SetConfigOption("OGR_GEOMETRY_ACCEPT_UNCLOSED_RING", "NO") 
+    gdal.SetConfigOption("OGR_INTERLEAVED_READING", "YES")
+
+    # Define the single, correct SQL filter for solar generators (rooftop renewable)
+    sql_where_solar_generator = """
+        other_tags LIKE '%"power"=>"generator"%' AND 
+        other_tags LIKE '%"generator:source"=>"solar"%'
+    """
+    all_solar_dfs = [] # Use list to hold DataFrames
+
+    # --- 1. Extract from the 'multipolygons' layer (for complex features) ---
+    layer_name_poly = "multipolygons"
+    geojson_vsimem_poly = f"/vsimem/solar_temp_{layer_name_poly}.geojson"
+    #print(f"1. Checking layer: {layer_name_poly}...")
+
+    gdal.VectorTranslate(
+        geojson_vsimem_poly,
+        input_pbf,
+        format="GeoJSON",
+        layers=[layer_name_poly],
+        options=[
+            "-where", sql_where_solar_generator,
+            "-makevalid",
+            "-spat", str(minx), str(miny), str(maxx), str(maxy),
+        #"-nlt", "POLYGON"
+        ]
+    )
+    gdf_multipolygons = read_vsimem_geojson(geojson_vsimem_poly)
+    if not gdf_multipolygons.empty:
+        all_solar_dfs.append(gdf_multipolygons)
+        #print(f"   -> Found {len(gdf_multipolygons)} features in {layer_name_poly}.")
+
+    # --- 2. Extract from the 'lines' layer (for simple closed ways/polygons) ---
+    layer_name_lines = "lines"
+    geojson_vsimem_lines = f"/vsimem/solar_temp_{layer_name_lines}.geojson"
+    #print(f"2. Checking layer: {layer_name_lines}...")
+
+    gdal.VectorTranslate(
+        geojson_vsimem_lines,
+        input_pbf,
+        format="GeoJSON",
+        layers=[layer_name_lines], # This processes closed Ways as Polygons
+        options=[
+            "-where", sql_where_solar_generator,
+            "-makevalid",
+            "-spat", str(minx), str(miny), str(maxx), str(maxy),
+            "-nlt", "POLYGON"
+        ]
+    )
+    gdf_lines = read_vsimem_geojson(geojson_vsimem_lines)
+    if not gdf_lines.empty:
+        all_solar_dfs.append(gdf_lines)
+        #print(f"   -> Found {len(gdf_lines)} features in {layer_name_lines}.")
+
+    # --- 3. Combine and Finalize ---
+    if all_solar_dfs:
+        # Concatenate results using pandas.concat
+        gdf_solar_combined = pd.concat(all_solar_dfs, ignore_index=True)
+        gdf_solar_combined.crs = "EPSG:4326"
+    
+        # Project the combined GeoDataFrame (assuming .to_crs is a method on the returned structure)
+        gdf_solar_combined = gdf_solar_combined.to_crs(epsg)
+    
+        #print(f"\n✅ Total solar generator polygons harvested: {len(gdf_solar_combined)}")
+    #else:
+        # Create an empty DataFrame if nothing was found
+        #gdf_solar_combined = pd.DataFrame() 
+        #print("\033[1m No solar generator features found.\033[0m No rooftop solar are mapped in", jparams['FocusArea'])
+
+    # Cleanup VSI Memory
+    gdal.Unlink(geojson_vsimem_poly)
+    gdal.Unlink(geojson_vsimem_lines)
+
+    return gdf_solar_combined
+
+def calculate_azimuth_from_geometry(polygon):
+    """
+    Calculates the azimuth (angle from North, clockwise, 0-180) 
+    of the minimum rotated bounding box for a given Shapely Polygon.
+    """
+    if not polygon or polygon.geom_type not in ['Polygon', 'MultiPolygon']:
+        return 0.0
+
+    min_rect = polygon.minimum_rotated_rectangle
+    
+    if min_rect.geom_type != 'Polygon':
+        return 0.0
+        
+    coords = np.array(min_rect.exterior.coords)
+    
+    segment1 = coords[1] - coords[0]
+    segment2 = coords[2] - coords[1]
+    
+    len1 = np.linalg.norm(segment1)
+    len2 = np.linalg.norm(segment2)
+
+    long_segment = segment1 if len1 >= len2 else segment2
+        
+    if np.linalg.norm(long_segment) == 0:
+        return 0.0
+
+    angle_rad = np.arctan2(long_segment[1], long_segment[0])
+    angle_deg = np.degrees(angle_rad)
+    
+    # Convert angle (from X-axis CCW) to Azimuth (from North CW)
+    azimuth = 90.0 - angle_deg
+    azimuth = azimuth % 360.0
+        
+    # Constrain to 0-180 range
+    if azimuth > 180.0:
+        azimuth -= 180.0
+
+    return azimuth
+
+
+def _with_solar(gdf_buildings, gdf_solar, epsg):
+    """
+    Efficient Dual Join: Performs both building-centric and solar-centric joins
+    in one loop.
+
+    Returns: (gdf_buildings_modified, gdf_solar_modified)
+    """
+
+    n_bld = len(gdf_buildings["geometry"])
+    n_sol = len(gdf_solar["geometry"])
+    
+    # CRITICAL: IDs for both DataFrames
+    BLD_ID_COLUMN = "osm_id"  # Assuming 'osm_id' is the unique ID in the building layer
+    SOLAR_ID_COLUMN = "osm_id"
+    
+    # --- BUILDING-CENTRIC OUTPUT (for blds.df) ---
+    solar_id_lists = [[] for _ in range(n_bld)]  # List of solar IDs for each building
+    solar_m = [[] for _ in range(n_bld)]
+    has_solar = [False] * n_bld
+
+    # --- SOLAR-CENTRIC OUTPUT (for gdf_solar.df) ---
+    bld_id_lists = [[] for _ in range(n_sol)]  # List of building IDs for each solar panel
+    #bld_id_lists =[None] * n_sol
+    
+    # Brute-force intersection
+    for i in range(n_bld):
+        b_geom = gdf_buildings["geometry"].iloc[i]
+        bld_id = gdf_buildings[BLD_ID_COLUMN].iloc[i] # Get the building ID
+
+        for j in range(n_sol):
+            s_geom = gdf_solar["geometry"].iloc[j]
+            sol_id = gdf_solar[SOLAR_ID_COLUMN].iloc[j] # Get the solar ID
+            s_m = gdf_solar['generator:method'].iloc[j] # Get the building ID
+
+            if b_geom.contains(s_geom):
+                # 1. Building-Centric Logic (Attaches solar ID to building)
+                has_solar[i] = True
+                solar_id_lists[i].append(sol_id)
+                solar_m[i].append(s_m)
+
+                # 2. Solar-Centric Logic (Attaches building ID to solar panel)
+                bld_id_lists[j].append(bld_id)
+                #if bld_id_lists[j] is None:
+                #    bld_id_lists[j] = bld_id
+
+    # --- Finalize Lists (Replace [] with None) ---
+    for i in range(n_bld):
+        if not solar_id_lists[i]:
+            solar_id_lists[i] = None
+
+    for j in range(n_sol):
+        if not bld_id_lists[j]:
+            bld_id_lists[j] = None
+
+    # --- CREATE OUTPUT DataFrames ---
+
+    # 1. Modified Building DataFrame (blds)
+    #gdf_blds_out = dict(gdf_buildings)
+    gdf_buildings["children"] = solar_id_lists 
+    gdf_buildings["has_solar"] = has_solar
+    gdf_buildings["method"] = solar_m
+    #blds_out = GeoDataFrameLite(gdf_blds_out)
+    #blds_out.crs = epsg
+
+    # 2. Modified Solar DataFrame (gdf_solar)
+    # We must use the solar DataFrame as the base to keep all geometry/attributes
+    #gdf_solar_out = dict(gdf_solar)
+    # The new column holds the list of intersecting building IDs
+    gdf_solar["parent"] = bld_id_lists 
+    #gdf_solar_out = GeoDataFrameLite(gdf_solar_out)
+    #gdf_solar_out.crs = epsg
+    gdf_solar = gdf_solar.rename(columns={'generator:method': 'method'})
+    gdf_solar['area'] = gdf_solar['geometry'].apply(lambda geom: geom.area)
+    gdf_solar['azimuth'] = gdf_solar['geometry'].apply(calculate_azimuth_from_geometry)
+
+    return gdf_buildings, gdf_solar
