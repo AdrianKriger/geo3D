@@ -1225,7 +1225,6 @@ def calculate_azimuth_from_geometry(polygon):
 
     return azimuth
 
-
 def _with_solar(gdf_buildings, gdf_solar, epsg):
     """
     Efficient Dual Join: Performs both building-centric and solar-centric joins
