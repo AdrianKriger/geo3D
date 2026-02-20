@@ -626,39 +626,6 @@ def gdf_to_pathlayer(df, color_col='colour'):
                 paths.append({'path': list(line.coords), 'colour': row[color_col]})
     return paths
 
-#def gdf_to_geojson(df):
-#    """
-#    Convert a DataFrame with a 'geometry' column to a GeoJSON dict.
-#    All columns except 'geometry' are included in 'properties'.
-#    """
-#    def coords_to_list(coords):
-#        """Recursively convert tuples to lists for JSON."""
-#        if isinstance(coords, (float, int)):
-#            return coords
-#        return [coords_to_list(c) for c in coords]
-#    
-#    features = []
-#    for idx, row in df.iterrows():
-#        geom = mapping(row['geometry'])
-#        geom["coordinates"] = coords_to_list(geom["coordinates"])
-#        
-#        # Include all columns except 'geometry' in properties
-#        props = row.drop(labels='geometry').to_dict()
-#        
-#        features.append({
-#            "type": "Feature",
-#            "geometry": geom,
-#            "properties": props
-#        })
-#    
-#    geojson_dict = {
-#        "type": "FeatureCollection",
-#        "crs": {"type": "name", "properties": {"name": "EPSG:4326"}},
-#        "features": features
-#    }
-#    
-#    return geojson_dict
-
 def rasterQuery2(mx, my, gt_forward, rb):
     
     px = int((mx - gt_forward[0]) / gt_forward[1])
