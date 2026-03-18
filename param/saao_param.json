@@ -16,10 +16,10 @@
 
     "xyz": "../result/rasElevTest.xyz",
     
-    "cjsn_out": "../result/citjsn_saao3d.json",
+    "cjsn_out": "../result/citjsn_saao3D.json",
     
     "cjsn_title": "Royal Observatory, Cape of Good Hope",
-    "cjsn_referenceDate": "2022-01-31",
+    "cjsn_referenceDate": "2026-03-18",
     "cjsn_contactName": "arkriger", 
     "cjsn_emailAddress": "adrian8kriger@gmail.com", 
     "cjsn_website": "www.linkedin.com/in/adrian-kriger", 
@@ -27,7 +27,5 @@
 	"cjsn_+meta-description": "City of Cape Town",
 	"cjsn_+meta-sourceSpatialResolution": "25 meter bare-earth DEM",
     "cjsn_+meta-sourceReferenceSystem": "urn:ogc:def:crs:EPSG:20481",
-    "cjsn_+meta-sourceCitation":"http://www.ngi.gov.za/",
-    
-    "cjsn_solid": "../result/citjsnClean_saao3d.json"
+    "cjsn_+meta-sourceCitation":"http://www.ngi.gov.za/"
 }
