@@ -48,7 +48,9 @@ warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API
 from cjio import cityjson, geom_help
 from cjio.cityjson import CityJSON
 
-import gmsh
+import cadquery as cq
+#from OCP.Interface import Interface_Static
+import OCP
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
@@ -970,56 +972,52 @@ def output_cityjson(extent, minz, maxz, tris, tri_attr, final_verts_3d, dis, jpa
     #cm_obj = cityjson.load(jparams['cjsn_out'])
     #cityjson.save(cm_obj, jparams['cjsn_solid'])
 
-
 def exportStep(dis_c, extent, out_path):
+    # 1. Force the OpenCASCADE STEP processor to use Meters
+    # "M" = Meters, "MM" = Millimeters
+    w = OCP.STEPControl.STEPControl_Writer()
+    OCP.Interface.Interface_Static.SetCVal_s("write.step.unit","M")
+    
+    # Center the coordinate system at (0,0)
+    x_off = (extent[0] + extent[2]) / 2.0
+    y_off = (extent[1] + extent[3]) / 2.0
+    
+    showcase = cq.Assembly()
 
-    gmsh.initialize()
-    occ = gmsh.model.occ 
-    gmsh.option.setNumber("Geometry.OCCScaling", 1.0)
-    gmsh.option.setString("Geometry.OCCTargetUnit", "M")
-    gmsh.option.setNumber("Geometry.Tolerance", 0.05)
-    gmsh.option.setNumber("Geometry.ToleranceBoolean", 0.05)
-
-    # 1. Coordinate Translation
-    x_off, y_off = (extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2
-    # In flat mode, we ignore real-world elevation to force the floor to 0
-    z_off = 0.0 #float(minz) if include_terrain else 0.0
-
-
-    # --- 6. CREATE BUILDING VOLUMES ---
-    building_vols = []
     for i, row in dis_c.iterrows():
-        bld_h = float(pd.to_numeric(row.get('building_height', 4.0), errors='coerce') or 4.0)
+        bld_h = pd.to_numeric(row.get('building_height'), errors='coerce')
+        min_h = pd.to_numeric(row.get('min_height'), errors='coerce')
+        b_type = row.get('building_type', 'building')
+        osm_id = row.get('osm_id', i)
+
+        if pd.isna(bld_h) or bld_h <= 0:
+            continue
+
+        # Position logic
+        b_z = 0.0
+        if b_type == 'bridge' and not pd.isna(min_h):
+            b_z = min_h
+        elif b_type == 'roof' and not pd.isna(min_h):
+            b_z = min_h + 1.3
+
+        # Create Geometry
+        ext_pts = [(p[0] - x_off, p[1] - y_off) for p in row.geometry.exterior.coords]
+        wp = cq.Workplane("XY").polyline(ext_pts).close()
         
-        #if not include_terrain:
-        # FLAT MODE: Everything starts at 0.0
-        start_z = 0.0
-        extrude_h = bld_h
+        for interior in row.geometry.interiors:
+            int_pts = [(p[0] - x_off, p[1] - y_off) for p in interior.coords]
+            wp = wp.polyline(int_pts).close()
 
-        # Footprint Creation
-        exterior = list(row.geometry.exterior.coords)[:-1]
-        p_tags = [occ.addPoint(p[0]-x_off, p[1]-y_off, start_z) for p in exterior]
-        l_tags = [occ.addLine(p_tags[j], p_tags[(j+1)%len(p_tags)]) for j in range(len(p_tags))]
-        all_wires = [occ.addCurveLoop(l_tags)]
-        
-        for interior_geom in row.geometry.interiors:
-            i_coords = list(interior_geom.coords)[:-1]
-            ip_tags = [occ.addPoint(p[0]-x_off, p[1]-y_off, start_z) for p in i_coords]
-            il_tags = [occ.addLine(ip_tags[j], ip_tags[(j+1)%len(ip_tags)]) for j in range(len(ip_tags))]
-            all_wires.append(occ.addCurveLoop(il_tags))
+        try:
+            solid = wp.extrude(float(bld_h))
+            positioned = solid.translate((0, 0, float(b_z)))
+            showcase.add(positioned, name=f"osm_{osm_id}")
+        except:
+            continue
 
-        face = occ.addPlaneSurface(all_wires)
-        ext = occ.extrude([(2, face)], 0, 0, extrude_h)
-        building_vols.append(ext[1][1])
-
-    occ.synchronize()
-
-    # --- 7. EXPORT ---    
-    if building_vols:
-        gmsh.model.addPhysicalGroup(3, building_vols, name="buildings")
-
-    gmsh.write(out_path)
-    gmsh.finalize()
+    # 2. Save the Assembly
+    # With the Static variable set above, the header will now say .METRE.
+    showcase.save(out_path)
 
 def reconstruct_simscale_results(case_path, center_lat=-33.93379, center_lon=18.45964, radius=400.0):
     """

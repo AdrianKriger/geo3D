@@ -14,7 +14,7 @@ dependencies:
 - matplotlib
 - numpy
 - shapely
-- gmsh
+- cadquery                             #- B-Rep creation	
 - pip
 - pip:
   # works for regular pip packages
@@ -22,4 +22,3 @@ dependencies:
   - cjio==0.10.1                       #- python CLI to process and manipulate CityJSON files
   - overpass==0.7
   - openlocationcode==1.0.1            #- google 'plus codes' at https://github.com/google/open-location-code
-  - gmsh                               #- B-Rep creation	
