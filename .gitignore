@@ -1,2 +1,12 @@
 __pycache__/
 .ipynb_checkpoints/
+
+# This matches any folder named __pycache__ anywhere in the repo
+**/__pycache__/
+
+# This matches any folder named .ipynb_checkpoints anywhere in the repo
+**/.ipynb_checkpoints/
+
+# Other standard ignores
+.DS_Store
+*.pyc
