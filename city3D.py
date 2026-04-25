@@ -1135,6 +1135,199 @@ def reconstruct_simscale_results(case_path, center_lat=-33.93379, center_lon=18.
 
     return df, cx_utm, cy_utm
 
+def exportSTL(dis_c, extent, out_path):
+    """
+    Creates a centered, metric STL from OSM building data.
+    Returns centering offsets and maximum building metrics for OpenFOAM scaling.
+    """
+    # 1. Calculate the center of your harvest area for a LOCAL origin
+    x_off = (extent[0] + extent[2]) / 2.0
+    y_off = (extent[1] + extent[3]) / 2.0
+    
+    solids_list = []
+    max_bld_h = 0.0  # Tallest individual building extrusion
+    max_z_abs = 0.0  # Highest point in the model (min_h + bld_h)
+
+    for i, row in dis_c.iterrows():
+        bld_h = pd.to_numeric(row.get('building_height'), errors='coerce')
+        min_h = pd.to_numeric(row.get('min_height'), errors='coerce')
+        b_type = row.get('building_type', 'building')
+
+        if pd.isna(bld_h) or bld_h <= 0:
+            continue
+        
+        # Track maximum extrusion height for turbulence calculations
+        if bld_h > max_bld_h:
+            max_bld_h = bld_h
+
+        # Determine Z-base (elevation)
+        b_z = 0.0
+        if b_type == 'bridge' and not pd.isna(min_h):
+            b_z = min_h
+        elif b_type == 'roof' and not pd.isna(min_h):
+            b_z = min_h + 1.3
+        elif not pd.isna(min_h):
+            b_z = min_h
+        
+        # Track absolute highest point for blockMesh 'sky' height
+        current_top = b_z + bld_h
+        if current_top > max_z_abs:
+            max_z_abs = current_top
+
+        # LOCAL COORDINATE TRANSFORMATION
+        ext_pts = [(round(p[0] - x_off, 4), round(p[1] - y_off, 4)) 
+                   for p in row.geometry.exterior.coords]
+
+        wp = cq.Workplane("XY").polyline(ext_pts).close()
+        
+        for interior in row.geometry.interiors:
+            int_pts = [(round(p[0] - x_off, 4), round(p[1] - y_off, 4)) 
+                       for p in interior.coords]
+            wp = wp.polyline(int_pts).close()
+
+        try:
+            solid = wp.extrude(float(bld_h)).translate((0, 0, float(b_z)))
+            solids_list.append(solid)
+        except Exception:
+            continue
+
+    if not solids_list:
+        print("No valid solids generated.")
+        return None
+
+    # 2. UNION & CLEAN
+    final_model = solids_list[0]
+    for s in solids_list[1:]:
+        final_model = final_model.union(s)
+        
+    final_model = final_model.clean()
+
+    # 3. EXPORT
+    cq.exporters.export(final_model, out_path, "STL", tolerance=0.001, angularTolerance=0.1)
+    
+    # RETURN ALL DATA FOR openfoam.py
+    # x_off, y_off: To center the blockMesh
+    # max_bld_h: For turbulence/ABL math
+    # max_z_abs: To define the Z-ceiling (sky) of the wind tunnel
+    return x_off, y_off, max_bld_h, max_z_abs, final_model
+
+    
+def reconstruct_openfoam_results(case_path, wind_deg, center_lat=-33.93379, center_lon=18.45964, radius=400.0):
+
+    def parse_vector(path):
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        match = re.search(r'\n(\d+)\s*\n\s*\(', content)
+        n = int(match.group(1))
+        limit = content.find('boundaryField', match.end())
+        if limit == -1: limit = len(content)
+        end_pos = content.rfind(')', match.end(), limit)
+        data_str = content[match.end():end_pos]
+        return np.fromstring(data_str.replace('(', ' ').replace(')', ' '),
+                             dtype=float, sep=' ').reshape(n, 3)
+
+    def parse_labels(path):
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        match = re.search(r'\n(\d+)\s*\n\s*\(', content)
+        n = int(match.group(1))
+        data_str = content[match.end() : content.rfind(')', match.end())]
+        return np.fromstring(data_str, dtype=int, sep=' ')
+
+    def parse_faces_vectorized(path):
+        """Returns (face_point_indices, face_sizes) if mixed polyhedral,
+           or a single (N_faces, K) array if uniform."""
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        # Extract all face definitions
+        raw = re.findall(r'\d+\(([^)]+)\)', content)
+        sizes = []
+        indices = []
+        for face_str in raw:
+            pts_idx = np.fromstring(face_str, dtype=np.int32, sep=' ')
+            sizes.append(len(pts_idx))
+            indices.append(pts_idx)
+        return indices, np.array(sizes)
+
+    # Load
+    pts     = parse_vector(os.path.join(case_path, 'points'))
+    owner   = parse_labels(os.path.join(case_path, 'owner'))
+    neighbour = parse_labels(os.path.join(case_path, 'neighbour'))
+    u_field = parse_vector(os.path.join(case_path, 'U'))
+    faces, face_sizes = parse_faces_vectorized(os.path.join(case_path, 'faces'))
+
+    n_cells = u_field.shape[0]
+
+    # --- Vectorized face centers ---
+    # If all faces have the same number of vertices (common in hex meshes), use a single array op
+    if np.all(face_sizes == face_sizes[0]):
+        k = face_sizes[0]
+        flat_idx = np.concatenate(faces).reshape(-1, k)
+        face_centers = pts[flat_idx].mean(axis=1)        # (N_faces, 3) — fully vectorized
+    else:
+        # Mixed polyhedral: still faster than per-face np.mean with Python loop
+        flat_idx = np.concatenate(faces)
+        offsets   = np.concatenate([[0], np.cumsum(face_sizes)])
+        # Use reduceat for a single-pass summation
+        sums = np.add.reduceat(pts[flat_idx], offsets[:-1], axis=0)
+        face_centers = sums / face_sizes[:, None]
+
+    # --- Fast cell center accumulation with np.bincount ---
+    all_cells  = np.concatenate([owner, neighbour])
+    all_fcenters = np.vstack([face_centers[np.arange(len(owner))],
+                               face_centers[np.arange(len(neighbour))]])
+
+    cell_cx = np.bincount(all_cells, weights=all_fcenters[:, 0], minlength=n_cells)
+    cell_cy = np.bincount(all_cells, weights=all_fcenters[:, 1], minlength=n_cells)
+    cell_cz = np.bincount(all_cells, weights=all_fcenters[:, 2], minlength=n_cells)
+    face_counts = np.bincount(all_cells, minlength=n_cells)
+
+    cell_coords = np.stack([cell_cx, cell_cy, cell_cz], axis=1) / face_counts[:, None]
+
+    #rot_rad = -math.radians(270 - wind_deg)
+    # Apply inverse rotation to simulation coordinates
+    #cos_a, sin_a = np.cos(-rot_rad), np.sin(-rot_rad)
+    #theta = math.radians(wind_deg)
+    wind_deg_corrected = 270 - wind_deg
+    theta = math.radians(wind_deg_corrected)
+    cos_a = np.cos(theta)
+    sin_a = np.sin(theta)
+    # Local rotation around simulation origin
+    x_rot = cell_coords[:, 0] * cos_a - cell_coords[:, 1] * sin_a
+    y_rot = cell_coords[:, 0] * sin_a + cell_coords[:, 1] * cos_a
+    #x_rot = cell_coords[:, 0] * cos_a + cell_coords[:, 1] * sin_a
+    #y_rot = cell_coords[:, 0] * sin_a + cell_coords[:, 1] * cos_a
+
+    # GIS alignment
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32734", always_xy=True)
+    cx_utm, cy_utm = transformer.transform(center_lon, center_lat)
+
+    #final_x = cell_coords[:, 0] + cx_utm
+    #final_y = cell_coords[:, 1] + cy_utm
+    # Now translate to UTM
+    final_x = x_rot + cx_utm
+    final_y = y_rot + cy_utm
+    final_z = cell_coords[:, 2]
+
+    # Spatial filter
+    dist_sq = (final_x - cx_utm)**2 + (final_y - cy_utm)**2
+    mask = dist_sq <= radius**2
+    # Rotate the U and V components of the wind field
+    u_final = u_field[:, 0] * cos_a - u_field[:, 1] * sin_a
+    v_final = u_field[:, 0] * sin_a + u_field[:, 1] * cos_a
+    
+    df = pd.DataFrame({
+        'X': final_x[mask], 'Y': final_y[mask], 'Z': final_z[mask],
+        #'U': u_field[mask, 0], 
+        #'V': u_field[mask, 1],
+        'U': u_final[mask], 
+        'V': v_final[mask],
+        #'u_mag': np.linalg.norm(u_field[mask], axis=1)
+        'u_mag': np.sqrt(u_final[mask]**2 + v_final[mask]**2)
+    })
+
+    return df, cx_utm, cy_utm
+
 def plot_wind_analysis(ped_df, buildings_df, center_x_utm, center_y_utm, radius=400, title_suffix="xxxx"):
     """
     Generates a side-by-side Velocity Magnitude and Vector Flow plot.

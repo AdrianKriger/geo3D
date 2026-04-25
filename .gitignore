@@ -1,12 +1,29 @@
-__pycache__/
+# Other standard ignores
+.DS_Store
+*.pyc
+
+# macOS system files
+.DS_Store
+._*
+.AppleDouble
+.lsbom
+.Spotlight-V100
+.Trashes
+
+# Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
-# This matches any folder named __pycache__ anywhere in the repo
-**/__pycache__/
 
 # This matches any folder named .ipynb_checkpoints anywhere in the repo
 **/.ipynb_checkpoints/
 
-# Other standard ignores
-.DS_Store
-*.pyc
+# Python build artifacts
+__pycache__/
+# This matches any folder named __pycache__ anywhere in the repo
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environment
+.venv/
+env/
