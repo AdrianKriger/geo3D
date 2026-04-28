@@ -1211,7 +1211,6 @@ def exportSTL(dis_c, extent, out_path):
     # max_z_abs: To define the Z-ceiling (sky) of the wind tunnel
     return x_off, y_off, max_bld_h, max_z_abs, final_model
 
-    
 def reconstruct_openfoam_results(case_path, wind_deg, center_lat=-33.93379, center_lon=18.45964, radius=400.0):
 
     def parse_vector(path):
@@ -1284,10 +1283,7 @@ def reconstruct_openfoam_results(case_path, wind_deg, center_lat=-33.93379, cent
 
     cell_coords = np.stack([cell_cx, cell_cy, cell_cz], axis=1) / face_counts[:, None]
 
-    #rot_rad = -math.radians(270 - wind_deg)
     # Apply inverse rotation to simulation coordinates
-    #cos_a, sin_a = np.cos(-rot_rad), np.sin(-rot_rad)
-    #theta = math.radians(wind_deg)
     wind_deg_corrected = 270 - wind_deg
     theta = math.radians(wind_deg_corrected)
     cos_a = np.cos(theta)
@@ -1295,15 +1291,11 @@ def reconstruct_openfoam_results(case_path, wind_deg, center_lat=-33.93379, cent
     # Local rotation around simulation origin
     x_rot = cell_coords[:, 0] * cos_a - cell_coords[:, 1] * sin_a
     y_rot = cell_coords[:, 0] * sin_a + cell_coords[:, 1] * cos_a
-    #x_rot = cell_coords[:, 0] * cos_a + cell_coords[:, 1] * sin_a
-    #y_rot = cell_coords[:, 0] * sin_a + cell_coords[:, 1] * cos_a
 
     # GIS alignment
     transformer = Transformer.from_crs("EPSG:4326", "EPSG:32734", always_xy=True)
     cx_utm, cy_utm = transformer.transform(center_lon, center_lat)
 
-    #final_x = cell_coords[:, 0] + cx_utm
-    #final_y = cell_coords[:, 1] + cy_utm
     # Now translate to UTM
     final_x = x_rot + cx_utm
     final_y = y_rot + cy_utm
@@ -1358,7 +1350,7 @@ def plot_wind_analysis(ped_df, buildings_df, center_x_utm, center_y_utm, radius=
     if len(ped_df) < 7000:
         bins = 10
     
-    # Create 1m or 5m bins
+    # Create bins
     ped_df['x_bin'] = (ped_df['X'] // bins) * bins
     ped_df['y_bin'] = (ped_df['Y'] // bins) * bins
 
@@ -1369,9 +1361,8 @@ def plot_wind_analysis(ped_df, buildings_df, center_x_utm, center_y_utm, radius=
         'u_mag': 'mean'
     }).reset_index()
 
-    # Plot binned_df instead of the raw 10M rows
+    # Plot binned_df instead of the raw xx rows
     qv = ax2.quiver(binned_df['x_bin'], binned_df['y_bin'], binned_df['U'], binned_df['V'], binned_df['u_mag'], cmap='jet', scale=120, alpha=0.9, width=0.003)
-
     #qv = ax2.quiver(x, y, u, v, mags, cmap='jet', scale=120, alpha=0.9, width=0.003)
     
     plot_geometries(buildings_df, ax=ax2, facecolor='lightgrey', edgecolor='black', alpha=0.8)
