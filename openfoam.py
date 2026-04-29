@@ -15,7 +15,18 @@ import cadquery as cq
 
 # Mappings for user inputs
 NU_MAP = {"sea-level": 1.5e-05, "elevated": 1.8e-05}
-Z0_MAP = {"coastal": 0.001, "open": 0.03, "suburb": 0.1, "city": 0.3}
+#Z0_MAP = {"coastal": 0.001, "open": 0.03, "suburb": 0.1, "city": 0.3}
+# Updated Z0_MAP based on European Wind Atlas standards
+Z0_MAP = {
+    "water":                     0.0002, # Class 0: Open water
+    "airport_runway":            0.0024, # Class 0.5: Concrete/mowed grass
+    "open":                      0.03,   # Class 1: Open fields, no fences
+    "agri_sheltered":            0.1,    # Class 2: Agri with 500m hedgerow spacing
+    "rural":                     0.2,    # Class 2.5: Many houses/shrubs
+    "village, town and suburb":  0.4,    # Class 3: Villages, small towns, or forests
+    "urban suburb and city":     0.8,    # Class 3.5: Larger cities with tall buildings
+    "metro":                     1.2     # Class 4: Skyscrapers/Metropolitan areas
+}
 
 def write_openfoam_case(case_path, extent, x_off, y_off, max_h, buildingsSTL, nu, z0, wind_speed, wind_deg, mode='RANS'):
     """
@@ -113,20 +124,42 @@ boundaryField
 
 def write_k_file(case_path, wind_speed, z0_value):
     header = write_header("volScalarField", "k")
-    k_init = 1.5 * (wind_speed * 0.05)**2
+    
+    kappa = 0.41
+    Cmu = 0.09
+    u_star = (wind_speed * kappa) / math.log(10.0 / z0_value)
+    
+    # k is theoretically constant in the ABL: k = uStar^2 / sqrt(Cmu)
+    k_value = (u_star**2) / math.sqrt(Cmu)
+
     content = f"""{header}
 dimensions      [0 2 -2 0 0 0 0];
-internalField   uniform {k_init};
+internalField   uniform {k_value};
+
 boundaryField
 {{
-    inlet {{ type atmBoundaryLayerInletK; zDir (0 0 1); flowDir (1 0 0); Uref {wind_speed}; Zref 10.0; z0 uniform {z0_value}; zGround uniform 0.0; value $internalField; }}
-    outlet {{ type zeroGradient; }}
-    ground {{ type kqRWallFunction; value $internalField; }}
-    buildings {{ type kqRWallFunction; value $internalField; }}
-    frontAndBack {{ type symmetry; }}
-    sky {{ type slip; }}
-}}"""
-    with open(os.path.join(case_path, "0/k"), "w") as f: f.write(content)
+    inlet
+    {{
+        type            atmBoundaryLayerInletK;
+        z0              uniform {z0_value};
+        flowDir         (1 0 0);  
+        zDir            (0 0 1);
+        zGround uniform 0.0;
+        Zref 10.0;
+        Uref            {wind_speed};
+        uStar           {u_star};
+        kappa           {kappa};
+        value           $internalField;
+    }}
+    outlet          {{ type zeroGradient; }}
+    ground          {{ type kqRWallFunction; value $internalField; }}
+    buildings       {{ type kqRWallFunction; value $internalField; }}
+    frontAndBack    {{ type symmetry; }}
+    sky             {{ type slip; }}
+}}
+"""
+    with open(os.path.join(case_path, "0/k"), "w") as f:
+        f.write(content)
 
 def write_epsilon_file(case_path, wind_speed, max_h, z0_value):
     header = write_header("volScalarField", "epsilon")
@@ -147,13 +180,34 @@ boundaryField
 
 def write_omega_file(case_path, wind_speed, z0_value):
     header = write_header("volScalarField", "omega")
-    omega_init = (math.sqrt(1.5 * (wind_speed * 0.05)**2)) / (0.09 * 10)
+    #omega_init = (math.sqrt(1.5 * (wind_speed * 0.05)**2)) / (0.09 * 10)
+    # Standard constants for ABL
+    kappa = 0.41
+    Cmu = 0.09
+    
+    # Calculate uStar (friction velocity) based on the log law: 
+    # U = (uStar/kappa) * ln(z_ref / z0) -> assuming z_ref is 10m
+    u_star = (wind_speed * kappa) / math.log(10.0 / z0_value)
+    
+    # Internal field initialization remains a sensible average
+    omega_init = u_star / (math.sqrt(Cmu) * kappa * (10.0 + z0_value))
+
     content = f"""{header}
 dimensions      [0 0 -1 0 0 0 0];
 internalField   uniform {omega_init};
 boundaryField
 {{
-    inlet {{ type turbulentMixingLengthFrequencyInlet; mixingLength 0.5; value $internalField; }}
+    inlet {{ type            atmBoundaryLayerInletK;
+            z0              uniform {z0_value};
+            flowDir         (1 0 0); 
+            zDir            (0 0 1);
+            zGround uniform 0.0;
+            Zref 10.0;
+            Uref            {wind_speed};
+            uStar           {u_star};
+            kappa           {kappa};
+            value           $internalField; 
+            }}
     outlet {{ type zeroGradient; }}
     ground {{ type omegaWallFunction; value $internalField; }}
     buildings {{ type omegaWallFunction; value $internalField; }}
