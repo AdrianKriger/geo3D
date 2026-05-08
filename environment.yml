@@ -12,9 +12,10 @@ dependencies:
 - topojson=1.7
 - jupyterlab
 - matplotlib
+- scipy
 - numpy
 - shapely
-- cadquery                             #- B-Rep creation	
+- trimesh                             #- .obj creation	
 - pip
 - pip:
   # works for regular pip packages
@@ -22,3 +23,4 @@ dependencies:
   - cjio==0.10.1                       #- python CLI to process and manipulate CityJSON files
   - overpass==0.7
   - openlocationcode==1.0.1            #- google 'plus codes' at https://github.com/google/open-location-code
+  - manifold3d

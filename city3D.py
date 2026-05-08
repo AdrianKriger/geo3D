@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# env/geo3D_gthbRepo02
+# env/geo3D_sim04
 #########################
 # helper functions to create LoD1 3D City Model from volunteered public data (OpenStreetMap) with elevation via a raster DEM.
 
@@ -52,8 +52,7 @@ warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API
 from cjio import cityjson, geom_help
 from cjio.cityjson import CityJSON
 
-import cadquery as cq
-import OCP
+import trimesh
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
@@ -975,184 +974,26 @@ def output_cityjson(extent, minz, maxz, tris, tri_attr, final_verts_3d, dis, jpa
     #cm_obj = cityjson.load(jparams['cjsn_out'])
     #cityjson.save(cm_obj, jparams['cjsn_solid'])
 
-def exportStep(dis_c, extent, out_path):
-    # 1. Force the OpenCASCADE STEP processor to use Meters
-    w = OCP.STEPControl.STEPControl_Writer()
-    OCP.Interface.Interface_Static.SetCVal_s("write.step.unit", "M")
-    
-    # Center the coordinate system
+def exportOBJ(dis_c, extent, out_path):
+    # 1. Calculate the center for LOCAL origin
     x_off = (extent[0] + extent[2]) / 2.0
     y_off = (extent[1] + extent[3]) / 2.0
     
-    # We use a list to collect all solids first, then union them
-    solids_list = []
+    meshes_list = []
+    max_bld_h = 0.0
+    max_z_abs = 0.0
+
+    if dis_c.empty:
+        print("Error: Input GeoDataFrame (dis_c) is empty.")
+        return 0, 0, 0, 0, None
 
     for i, row in dis_c.iterrows():
+        # Use .get() with a default to avoid NaNs crashing the math
         bld_h = pd.to_numeric(row.get('building_height'), errors='coerce')
-        min_h = pd.to_numeric(row.get('min_height'), errors='coerce')
         b_type = row.get('building_type', 'building')
-
-        if pd.isna(bld_h) or bld_h <= 0:
-            continue
-
-        # Position logic
-        b_z = 0.0
-        if b_type == 'bridge' and not pd.isna(min_h):
-            b_z = min_h
-        elif b_type == 'roof' and not pd.isna(min_h):
-            b_z = min_h + 1.3
-
-        # need to prevent "Non-Manifold" or "Zero-Thickness" errors in the CAD - simulation later.
-        #- this ensures that 'X' junctions become actual overlapping areas
-        #buffered_geom = row.geometry.buffer(0.1, join_style=2) # join_style 2 = mitre (sharp corners)
-        
-        # Create Geometry
-        #ext_pts = [(p[0] - x_off, p[1] - y_off) for p in row.geometry.exterior.coords]
-        #ext_pts = [(p[0] - x_off, p[1] - y_off) for p in buffered_geom.exterior.coords]
-        ext_pts = [(round(p[0] - x_off, 3), round(p[1] - y_off, 3)) for p in row.geometry.exterior.coords]
-
-
-        wp = cq.Workplane("XY").polyline(ext_pts).close()
-        
-        # Handle inner courtyards (holes)
-        for interior in row.geometry.interiors:
-        #for interior in buffered_geom.interiors:
-            #int_pts = [(p[0] - x_off, p[1] - y_off) for p in interior.coords]
-            int_pts = [(round(p[0] - x_off, 3), round(p[1] - y_off, 3)) for p in interior.coords]
-            wp = wp.polyline(int_pts).close()
-
-        try:
-            # Extrude and translate to final Z position
-            solid = wp.extrude(float(bld_h)).translate((0, 0, float(b_z)))
-            solids_list.append(solid)
-        except:
-            continue
-
-    #if not solids_list:
-        #print("No valid solids generated.")
-        #return
-
-    # 2. THE MERGE STEP: Union all solids into a single B-Rep shell
-    # This dissolves walls between touching buildings (e.g. row houses)
-    final_model = solids_list[0]
-    for s in solids_list[1:]:
-        final_model = final_model.union(s)
-
-    final_model = final_model.clean()
-    # 3. Export as a single STEP file
-    # This removes the 'Assembly' structure and exports a 'Manifold' solid
-    cq.exporters.export(final_model, out_path, "STEP")
-
-def reconstruct_simscale_results(case_path, center_lat=-33.93379, center_lon=18.45964, radius=400.0):
-
-    def parse_vector(path):
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        match = re.search(r'\n(\d+)\s*\n\s*\(', content)
-        n = int(match.group(1))
-        limit = content.find('boundaryField', match.end())
-        if limit == -1: limit = len(content)
-        end_pos = content.rfind(')', match.end(), limit)
-        data_str = content[match.end():end_pos]
-        return np.fromstring(data_str.replace('(', ' ').replace(')', ' '),
-                             dtype=float, sep=' ').reshape(n, 3)
-
-    def parse_labels(path):
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        match = re.search(r'\n(\d+)\s*\n\s*\(', content)
-        n = int(match.group(1))
-        data_str = content[match.end() : content.rfind(')', match.end())]
-        return np.fromstring(data_str, dtype=int, sep=' ')
-
-    def parse_faces_vectorized(path):
-        """Returns (face_point_indices, face_sizes) if mixed polyhedral,
-           or a single (N_faces, K) array if uniform."""
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        # Extract all face definitions
-        raw = re.findall(r'\d+\(([^)]+)\)', content)
-        sizes = []
-        indices = []
-        for face_str in raw:
-            pts_idx = np.fromstring(face_str, dtype=np.int32, sep=' ')
-            sizes.append(len(pts_idx))
-            indices.append(pts_idx)
-        return indices, np.array(sizes)
-
-    # Load
-    pts     = parse_vector(os.path.join(case_path, 'points'))
-    owner   = parse_labels(os.path.join(case_path, 'owner'))
-    neighbour = parse_labels(os.path.join(case_path, 'neighbour'))
-    u_field = parse_vector(os.path.join(case_path, 'U'))
-    faces, face_sizes = parse_faces_vectorized(os.path.join(case_path, 'faces'))
-
-    n_cells = u_field.shape[0]
-
-    # --- Vectorized face centers ---
-    # If all faces have the same number of vertices (common in hex meshes), use a single array op
-    if np.all(face_sizes == face_sizes[0]):
-        k = face_sizes[0]
-        flat_idx = np.concatenate(faces).reshape(-1, k)
-        face_centers = pts[flat_idx].mean(axis=1)        # (N_faces, 3) — fully vectorized
-    else:
-        # Mixed polyhedral: still faster than per-face np.mean with Python loop
-        flat_idx = np.concatenate(faces)
-        offsets   = np.concatenate([[0], np.cumsum(face_sizes)])
-        # Use reduceat for a single-pass summation
-        sums = np.add.reduceat(pts[flat_idx], offsets[:-1], axis=0)
-        face_centers = sums / face_sizes[:, None]
-
-    # --- Fast cell center accumulation with np.bincount ---
-    all_cells  = np.concatenate([owner, neighbour])
-    all_fcenters = np.vstack([face_centers[np.arange(len(owner))],
-                               face_centers[np.arange(len(neighbour))]])
-
-    cell_cx = np.bincount(all_cells, weights=all_fcenters[:, 0], minlength=n_cells)
-    cell_cy = np.bincount(all_cells, weights=all_fcenters[:, 1], minlength=n_cells)
-    cell_cz = np.bincount(all_cells, weights=all_fcenters[:, 2], minlength=n_cells)
-    face_counts = np.bincount(all_cells, minlength=n_cells)
-
-    cell_coords = np.stack([cell_cx, cell_cy, cell_cz], axis=1) / face_counts[:, None]
-
-    # GIS alignment
-    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32734", always_xy=True)
-    cx_utm, cy_utm = transformer.transform(center_lon, center_lat)
-
-    final_x = cell_coords[:, 0] + cx_utm
-    final_y = cell_coords[:, 1] + cy_utm
-    final_z = cell_coords[:, 2]
-
-    # Spatial filter
-    dist_sq = (final_x - cx_utm)**2 + (final_y - cy_utm)**2
-    mask = dist_sq <= radius**2
-
-    df = pd.DataFrame({
-        'X': final_x[mask], 'Y': final_y[mask], 'Z': final_z[mask],
-        'U': u_field[mask, 0], 'V': u_field[mask, 1],
-        'u_mag': np.linalg.norm(u_field[mask], axis=1)
-    })
-
-    return df, cx_utm, cy_utm
-
-def exportSTL(dis_c, extent, out_path):
-    """
-    Creates a centered, metric STL from OSM building data.
-    Returns centering offsets and maximum building metrics for OpenFOAM scaling.
-    """
-    # 1. Calculate the center of your harvest area for a LOCAL origin
-    x_off = (extent[0] + extent[2]) / 2.0
-    y_off = (extent[1] + extent[3]) / 2.0
-    
-    solids_list = []
-    max_bld_h = 0.0  # Tallest individual building extrusion
-    max_z_abs = 0.0  # Highest point in the model (min_h + bld_h)
-
-    for i, row in dis_c.iterrows():
-        bld_h = pd.to_numeric(row.get('building_height'), errors='coerce')
         min_h = pd.to_numeric(row.get('min_height'), errors='coerce')
-        b_type = row.get('building_type', 'building')
-
+        min_h = 0.0 if pd.isna(min_h) else min_h
+        
         if pd.isna(bld_h) or bld_h <= 0:
             continue
         
@@ -1174,41 +1015,57 @@ def exportSTL(dis_c, extent, out_path):
         if current_top > max_z_abs:
             max_z_abs = current_top
 
-        # LOCAL COORDINATE TRANSFORMATION
-        ext_pts = [(round(p[0] - x_off, 4), round(p[1] - y_off, 4)) 
-                   for p in row.geometry.exterior.coords]
+        # 2. Geometry Prep
+        geom = row.geometry
+        if not geom.is_valid:
+            geom = geom.buffer(0)
 
-        wp = cq.Workplane("XY").polyline(ext_pts).close()
-        
-        for interior in row.geometry.interiors:
-            int_pts = [(round(p[0] - x_off, 4), round(p[1] - y_off, 4)) 
-                       for p in interior.coords]
-            wp = wp.polyline(int_pts).close()
-
+        # Trimesh creation.extrude is very picky about the input Polygon.
+        # We transform the coordinates to local BEFORE passing to Polygon.
         try:
-            solid = wp.extrude(float(bld_h)).translate((0, 0, float(b_z)))
-            solids_list.append(solid)
-        except Exception:
+            # Extract exterior and simplify slightly to remove micro-segments
+            ext_coords = np.array(geom.exterior.coords)
+            local_ext = ext_coords[:, :2] - [x_off, y_off]
+            
+            # Handle holes (interiors)
+            local_ints = []
+            for inter in geom.interiors:
+                int_coords = np.array(inter.coords)
+                local_ints.append(int_coords[:, :2] - [x_off, y_off])
+            
+            # Create a clean local Shapely polygon for Trimesh
+            local_poly = Polygon(local_ext, local_ints)
+
+            # 3. Extrusion
+            # We use 'height' as the keyword argument
+            bld_mesh = trimesh.creation.extrude_polygon(local_poly, height=float(bld_h))
+            
+            # Translate to elevation
+            bld_mesh.apply_translation([0, 0, float(min_h)])
+            meshes_list.append(bld_mesh)
+            
+        except Exception as e:
+            # If a specific building fails, print why but keep going
+            print(f"Skipping building {i}: {e}")
             continue
 
-    if not solids_list:
-        print("No valid solids generated.")
-        return None
+    if not meshes_list:
+        print("No valid meshes generated. Check if heights are > 0 and geometry is valid.")
+        # Return zeros and None to prevent the Unpacking TypeError
+        return x_off, y_off, 0.0, 0.0, None
 
-    # 2. UNION & CLEAN
-    final_model = solids_list[0]
-    for s in solids_list[1:]:
-        final_model = final_model.union(s)
-        
-    final_model = final_model.clean()
+    # 4. Final Processing
+    try:
+        final_model = trimesh.boolean.union(meshes_list, engine='manifold')
+        final_model.export(out_path)
+    except:
+        print("Boolean failed, falling back to merge_vertices...")
+        final_model = trimesh.util.concatenate(solids_list)
+        final_model.merge_vertices(digits=3)
+        final_model.export(out_path)
 
-    # 3. EXPORT
-    cq.exporters.export(final_model, out_path, "STL", tolerance=0.001, angularTolerance=0.1)
+    #print(f"Successfully exported {len(meshes_list)} buildings to {out_path}")
     
-    # RETURN ALL DATA FOR openfoam.py
-    # x_off, y_off: To center the blockMesh
-    # max_bld_h: For turbulence/ABL math
-    # max_z_abs: To define the Z-ceiling (sky) of the wind tunnel
     return x_off, y_off, max_bld_h, max_z_abs, final_model
 
 def reconstruct_openfoam_results(case_path, wind_deg, center_lat=-33.93379, center_lon=18.45964, radius=400.0):

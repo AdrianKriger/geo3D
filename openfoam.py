@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# env/geo3D_sim02
+# env/geo3D_sim04
 #########################
 
 # author: arkriger - 2023 - 2026
@@ -11,7 +11,9 @@
 
 import os
 import math
-import cadquery as cq
+import numpy as np
+import tempfile
+import trimesh
 
 # Mappings for user inputs
 NU_MAP = {"sea-level": 1.5e-05, "elevated": 1.8e-05}
@@ -28,7 +30,7 @@ Z0_MAP = {
     "metro":                     1.2     # Class 4: Skyscrapers/Metropolitan areas
 }
 
-def write_openfoam_case(case_path, extent, x_off, y_off, max_h, buildingsSTL, nu, z0, wind_speed, wind_deg, mode='RANS'):
+def write_openfoam_case(case_path, extent, x_off, y_off, max_h, buildings, nu, z0, wind_speed, wind_deg, mode='RANS'):
     """
     Consolidated master case writer.
     mode: 'RANS' (Steady simpleFoam) or 'URANS' (Transient incompressibleFluid)
@@ -42,11 +44,16 @@ def write_openfoam_case(case_path, extent, x_off, y_off, max_h, buildingsSTL, nu
         os.makedirs(os.path.join(case_path, folder), exist_ok=True)
 
     # STL Rotation & Export (Shared logic)
-    #rot = -wind_deg | correct durham, wQuarter NOT mamre
-    #rot = 90 - wind_deg 
     rot = wind_deg - 270
-    buildingsSTL = buildingsSTL.rotate((0, 0, 0), (0, 0, 1), rot)
-    cq.exporters.export(buildingsSTL, os.path.join(case_path, "constant/geometry/buildings.stl"), "STL", tolerance=0.001, angularTolerance=0.1)
+    rot_rad = np.radians(rot)
+    rotation_matrix = trimesh.transformations.rotation_matrix(rot_rad, [0, 0, 1])
+    # 3. Apply the rotation to your final_model
+    buildings.apply_transform(rotation_matrix)
+    
+    buildings.update_faces(buildings.unique_faces())
+    buildings.fix_normals(multibody=True)
+
+    buildings.export(os.path.join(case_path, "constant/geometry/buildings.obj"))
     
     # 2. 0/ Directory (Physics)
     write_u_file(case_path, wind_speed, z0_val)
@@ -380,9 +387,9 @@ def write_snappy_hex_mesh(case_path, extent, x_off, y_off, max_h):
     header = write_header("dictionary", "snappyHexMeshDict")
     content = f"""{header}
 #includeEtc "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
-castellatedMesh on; snap on; addLayers on;
+castellatedMesh on; snap on; addLayers off;
 geometry {{
-    buildings {{ type triSurfaceMesh; file "buildings.stl"; }}
+    buildings {{ type triSurfaceMesh; file "buildings.obj"; }}
     refinementBox {{ type box; min ({x_min} {y_min} 0); max ({x_max} {y_max} {macro_z}); }}
     pedestrianZone {{ type box; min ({x_min} {y_min} 0); max ({x_max} {y_max} 2.0); }}
 }};
@@ -394,7 +401,7 @@ castellatedMeshControls {{
     nCellsBetweenLevels 3;
 }}
 snapControls {{ explicitFeatureSnap true; }}
-addLayersControls {{ relativeSizes true; layers {{ "buildings.*" {{ nSurfaceLayers 2; }} }} expansionRatio 1.2; 
+addLayersControls {{ relativeSizes true; layers {{ "buildings" {{ nSurfaceLayers 2; }} }} expansionRatio 1.2; 
                                                                                             finalLayerThickness 0.5; 
                                                                                             minThickness 0.1;}}
 meshQualityControls {{ #includeEtc "caseDicts/mesh/generation/meshQualityDict.cfg" }}
@@ -409,4 +416,4 @@ def write_mesh_quality_dict(case_path):
 def write_surface_features(case_path):
     header = write_header("dictionary", "surfaceFeaturesDict")
     with open(os.path.join(case_path, "system/surfaceFeaturesDict"), "w") as f:
-        f.write(header + "\nsurfaces (\"buildings.stl\");\n#includeEtc \"caseDicts/surface/surfaceFeaturesDict.cfg\"")
+        f.write(header + "\nsurfaces (\"buildings.obj\");\n#includeEtc \"caseDicts/surface/surfaceFeaturesDict.cfg\"")
