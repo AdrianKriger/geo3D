@@ -3,13 +3,19 @@ OpenFOAM simulation results available [here](https://drive.google.com/file/d/1KA
 
 ```text
 openfoam/
+│
 ├── wStock/
 │   ├── rans/
 │   │   ├── summer/
 │   │   └── winter/
-│   └── 
+│   └── urans/
+│       ├── summer/
+│       └── winter/
 └── sRiver/
     ├── rans/
     │   ├── summer/
     │   └── winter/
-    └── 
+    └── urans/
+	├── summer/
+	└── winter
+```
