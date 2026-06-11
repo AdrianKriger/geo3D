@@ -1,5 +1,5 @@
 
-OpenFOAM simulation results available [here](https://drive.google.com/file/d/1KA8nDcnJ8SjVFzPoleSRsDUZRd8zz1qw/view?usp=share_link)
+You are free to interrogate [geo3DopenSim](https://github.com/AdrianKriger/geo3DopenSim) for the OpenFOAM [configuration files](https://github.com/AdrianKriger/geo3DopenSim/tree/main/urbanFlow)
 
 ```text
 openfoam/

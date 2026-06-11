@@ -30,7 +30,7 @@ Z0_MAP = {
     "metro":                     1.2     # Class 4: Skyscrapers/Metropolitan areas
 }
 
-def write_openfoam_case(case_path, extent, x_off, y_off, max_h, buildings, nu, z0, wind_speed, wind_deg, mode='RANS'):
+def write_openfoam_case(case_path, extent, x_off, y_off, max_h, terrain, nu, z0, wind_speed, wind_deg, mode='RANS'):
     """
     Consolidated master case writer.
     mode: 'RANS' (Steady simpleFoam) or 'URANS' (Transient incompressibleFluid)
@@ -44,17 +44,17 @@ def write_openfoam_case(case_path, extent, x_off, y_off, max_h, buildings, nu, z
         os.makedirs(os.path.join(case_path, folder), exist_ok=True)
 
     # STL Rotation & Export (Shared logic)
-    local_buildings = buildings.copy()
+    local_terrain = terrain.copy()
     rot = wind_deg - 270
     rot_rad = np.radians(rot)
     rotation_matrix = trimesh.transformations.rotation_matrix(rot_rad, [0, 0, 1])
     # 3. Apply the rotation to your final_model
-    local_buildings.apply_transform(rotation_matrix)
+    local_terrain.apply_transform(rotation_matrix)
     
-    local_buildings.update_faces(buildings.unique_faces())
-    local_buildings.fix_normals(multibody=True)
+    local_terrain.update_faces(local_terrain.unique_faces())
+    local_terrain.fix_normals(multibody=True)
 
-    local_buildings.export(os.path.join(case_path, "constant/geometry/buildings.obj"))
+    local_terrain.export(os.path.join(case_path, "constant/geometry/terrain.obj"))
     
     # 2. 0/ Directory (Physics)
     write_u_file(case_path, wind_speed, z0_val)
@@ -300,7 +300,52 @@ startTime       0;
 writeFormat     ascii;
 writePrecision  6;
 runTimeModifiable true;
-libs ("libatmosphericModels.so");"""
+libs ("libatmosphericModels.so");
+functions
+{{
+    surfacesVTK
+    {{
+        type            surfaces;
+        libs            ("libsampling.so");
+        writeControl    writeTime;
+        writeInterval   1000;  
+        surfaceFormat   vtk;
+    	interpolationScheme cell;
+        
+        // This ensures OpenFOAM tracks fields on the modified geometry
+        fields          ( U k ); 
+
+        surfaces
+        {{
+            pedestrianZone
+    	    {{
+                type            cuttingPlane;
+                planeType       pointAndNormal;
+                pointAndNormalDict
+                {{
+                    point       (0 0 1.5);
+                    normal      (0 0 1);
+                }}
+                signed          false;
+                topology        proximityRegions; 
+                absProximity    1.8;          
+            }}
+            utciZone
+            {{
+                type            cuttingPlane;
+                planeType       pointAndNormal;
+                pointAndNormalDict
+                {{
+                    point       (0 0 10.0);
+                    normal      (0 0 1);
+                }}
+                signed          false;
+                topology        proximityRegions; 
+                absProximity    11.0;          
+            }}
+        }}
+    }}
+}}"""
 
     with open(os.path.join(case_path, "system/controlDict"), "w") as f: 
         f.write(content)
