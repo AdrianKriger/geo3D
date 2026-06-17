@@ -1222,115 +1222,6 @@ def load_openfoam_vtk(case_path, file_name='hubHeight.vtk', wind_deg=0, extent=N
     #print(f"Completed structural generation. Exported {len(df)} cells inside active bounds.\n")
     
     return df#, x_off, y_off
-    
-def reconstruct_openfoam_results(case_path, wind_deg, center_lat=-33.93379, center_lon=18.45964, radius=400.0):
-
-    def parse_vector(path):
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        match = re.search(r'\n(\d+)\s*\n\s*\(', content)
-        n = int(match.group(1))
-        limit = content.find('boundaryField', match.end())
-        if limit == -1: limit = len(content)
-        end_pos = content.rfind(')', match.end(), limit)
-        data_str = content[match.end():end_pos]
-        return np.fromstring(data_str.replace('(', ' ').replace(')', ' '),
-                             dtype=float, sep=' ').reshape(n, 3)
-
-    def parse_labels(path):
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        match = re.search(r'\n(\d+)\s*\n\s*\(', content)
-        n = int(match.group(1))
-        data_str = content[match.end() : content.rfind(')', match.end())]
-        return np.fromstring(data_str, dtype=int, sep=' ')
-
-    def parse_faces_vectorized(path):
-        """Returns (face_point_indices, face_sizes) if mixed polyhedral,
-           or a single (N_faces, K) array if uniform."""
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        # Extract all face definitions
-        raw = re.findall(r'\d+\(([^)]+)\)', content)
-        sizes = []
-        indices = []
-        for face_str in raw:
-            pts_idx = np.fromstring(face_str, dtype=np.int32, sep=' ')
-            sizes.append(len(pts_idx))
-            indices.append(pts_idx)
-        return indices, np.array(sizes)
-
-    # Load
-    pts     = parse_vector(os.path.join(case_path, 'points'))
-    owner   = parse_labels(os.path.join(case_path, 'owner'))
-    neighbour = parse_labels(os.path.join(case_path, 'neighbour'))
-    u_field = parse_vector(os.path.join(case_path, 'U'))
-    faces, face_sizes = parse_faces_vectorized(os.path.join(case_path, 'faces'))
-
-    n_cells = u_field.shape[0]
-
-    # --- Vectorized face centers ---
-    # If all faces have the same number of vertices (common in hex meshes), use a single array op
-    if np.all(face_sizes == face_sizes[0]):
-        k = face_sizes[0]
-        flat_idx = np.concatenate(faces).reshape(-1, k)
-        face_centers = pts[flat_idx].mean(axis=1)        # (N_faces, 3) — fully vectorized
-    else:
-        # Mixed polyhedral: still faster than per-face np.mean with Python loop
-        flat_idx = np.concatenate(faces)
-        offsets   = np.concatenate([[0], np.cumsum(face_sizes)])
-        # Use reduceat for a single-pass summation
-        sums = np.add.reduceat(pts[flat_idx], offsets[:-1], axis=0)
-        face_centers = sums / face_sizes[:, None]
-
-    # --- Fast cell center accumulation with np.bincount ---
-    all_cells  = np.concatenate([owner, neighbour])
-    all_fcenters = np.vstack([face_centers[np.arange(len(owner))],
-                               face_centers[np.arange(len(neighbour))]])
-
-    cell_cx = np.bincount(all_cells, weights=all_fcenters[:, 0], minlength=n_cells)
-    cell_cy = np.bincount(all_cells, weights=all_fcenters[:, 1], minlength=n_cells)
-    cell_cz = np.bincount(all_cells, weights=all_fcenters[:, 2], minlength=n_cells)
-    face_counts = np.bincount(all_cells, minlength=n_cells)
-
-    cell_coords = np.stack([cell_cx, cell_cy, cell_cz], axis=1) / face_counts[:, None]
-
-    # Apply inverse rotation to simulation coordinates
-    wind_deg_corrected = 270 - wind_deg
-    theta = math.radians(wind_deg_corrected)
-    cos_a = np.cos(theta)
-    sin_a = np.sin(theta)
-    # Local rotation around simulation origin
-    x_rot = cell_coords[:, 0] * cos_a - cell_coords[:, 1] * sin_a
-    y_rot = cell_coords[:, 0] * sin_a + cell_coords[:, 1] * cos_a
-
-    # GIS alignment
-    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32734", always_xy=True)
-    cx_utm, cy_utm = transformer.transform(center_lon, center_lat)
-
-    # Now translate to UTM
-    final_x = x_rot + cx_utm
-    final_y = y_rot + cy_utm
-    final_z = cell_coords[:, 2]
-
-    # Spatial filter
-    dist_sq = (final_x - cx_utm)**2 + (final_y - cy_utm)**2
-    mask = dist_sq <= radius**2
-    # Rotate the U and V components of the wind field
-    u_final = u_field[:, 0] * cos_a - u_field[:, 1] * sin_a
-    v_final = u_field[:, 0] * sin_a + u_field[:, 1] * cos_a
-    
-    df = pd.DataFrame({
-        'X': final_x[mask], 'Y': final_y[mask], 'Z': final_z[mask],
-        #'U': u_field[mask, 0], 
-        #'V': u_field[mask, 1],
-        'U': u_final[mask], 
-        'V': v_final[mask],
-        #'u_mag': np.linalg.norm(u_field[mask], axis=1)
-        'u_mag': np.sqrt(u_final[mask]**2 + v_final[mask]**2)
-    })
-
-    return df, cx_utm, cy_utm
 
 def plot_wind_analysis(ped_df, gdf, center_x_utm, center_y_utm, radius=400, title_suffix="xxxx"):
     """
@@ -1371,73 +1262,6 @@ def plot_wind_analysis(ped_df, gdf, center_x_utm, center_y_utm, radius=400, titl
     #qv = ax2.quiver(binned_df['x_bin'], binned_df['y_bin'], binned_df['U'], binned_df['V'], binned_df['u_mag'], cmap='jet', scale=120, alpha=0.9, width=0.003) 
     qv = ax2.quiver(QUIVsampled_df['X'], QUIVsampled_df['Y'], QUIVsampled_df['U'], QUIVsampled_df['V'], QUIVsampled_df['u_mag'], cmap='jet', scale=120, alpha=0.9, width=0.003)
     plot_geometries(gdf, ax=ax2, facecolor='lightgrey', edgecolor='black', alpha=0.7)
-    ax2.set_title('B: Vector Flow Field', loc='left', pad=15, weight='bold')
-
-    # --- AXIS & SPATIAL STYLING ---
-    for ax in [ax1, ax2]:
-        ax.set_aspect('equal', adjustable='box')
-        ax.set_xlabel('Easting (m)')
-        # Force strict 400m AOI
-        ax.set_xlim(center_x_utm - radius, center_x_utm + radius)
-        ax.set_ylim(center_y_utm - radius, center_y_utm + radius)
-
-    ax1.set_ylabel('Northing (m)')
-
-    # --- SHARED COLORBAR (The "No Squish" Fix) ---
-    fig.subplots_adjust(right=0.9) 
-    cbar_ax = fig.add_axes([0.92, 0.15, 0.015, 0.7]) 
-    fig.colorbar(cntr, cax=cbar_ax, label='Wind Speed (m/s)')
-
-    plt.suptitle(f'Pedestrian Wind at 1.2m to 1.9m - {title_suffix}', fontsize=16, y=0.98)
-    
-    return fig, (ax1, ax2)
-    
-def plot_wind_analysisOLD(ped_df, buildings_df, center_x_utm, center_y_utm, radius=400, title_suffix="xxxx"):
-    """
-    Generates a side-by-side Velocity Magnitude and Vector Flow plot.
-    center_coords: tuple (center_x_utm, center_y_utm)
-    """
-    #cx, cy = center_coords
-    
-    # 1. Setup the figure
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 9), sharey=True)
-
-    # --- MAP A: Magnitude (Tricontour) ---
-    cntr = ax1.tricontourf(ped_df['X'], ped_df['Y'], ped_df['u_mag'], 
-                           levels=20, cmap='jet', alpha=0.7)
-    
-    # Use your existing plot_geometries function
-    plot_geometries(buildings_df, ax=ax1, facecolor='lightgrey', edgecolor='black', alpha=0.8)
-    ax1.set_title('A: Wind Velocity Magnitude (m/s)', loc='left', pad=15, weight='bold')
-
-    # --- MAP B: Flow (Quiver) ---
-    # Sampling for visual clarity (skip 3 points)
-    #skip = 7
-    #x, y = ped_df['X'].values[::skip], ped_df['Y'].values[::skip]
-    #u, v = ped_df['U'].values[::skip].astype(float), ped_df['V'].values[::skip].astype(float)
-    #mags = ped_df['u_mag'].values[::skip].astype(float)
-
-    if len(ped_df) > 7000:
-        bins = 20
-    if len(ped_df) < 7000:
-        bins = 10
-    
-    # Create bins
-    ped_df['x_bin'] = (ped_df['X'] // bins) * bins
-    ped_df['y_bin'] = (ped_df['Y'] // bins) * bins
-
-    # Aggregate: Mean velocity per bin
-    binned_df = ped_df.groupby(['x_bin', 'y_bin']).agg({
-        'U': 'mean', 
-        'V': 'mean', 
-        'u_mag': 'mean'
-    }).reset_index()
-
-    # Plot binned_df instead of the raw xx rows
-    qv = ax2.quiver(binned_df['x_bin'], binned_df['y_bin'], binned_df['U'], binned_df['V'], binned_df['u_mag'], cmap='jet', scale=120, alpha=0.9, width=0.003)
-    #qv = ax2.quiver(x, y, u, v, mags, cmap='jet', scale=120, alpha=0.9, width=0.003)
-    
-    plot_geometries(buildings_df, ax=ax2, facecolor='lightgrey', edgecolor='black', alpha=0.8)
     ax2.set_title('B: Vector Flow Field', loc='left', pad=15, weight='bold')
 
     # --- AXIS & SPATIAL STYLING ---
@@ -1550,7 +1374,6 @@ def calculate_shadows(dis_c, sun_azimuth, sun_altitude, min_altitude=2.0):
 
     return shadows
 
-
 def apply_solar_to_df(df: pd.DataFrame, shadows: list) -> pd.DataFrame:
     """
     Height-aware shade classification.
@@ -1583,8 +1406,8 @@ def apply_solar_to_df(df: pd.DataFrame, shadows: list) -> pd.DataFrame:
     return df
 
 def build_utci_layer(
-    #ped_df_full: pd.DataFrame,
-    summerPed, summer10m,
+    dfFull: pd.DataFrame,
+    #summerPed, summer10m,
     shadows: list,
     ta: float,
     rh: float,
@@ -1608,7 +1431,7 @@ def build_utci_layer(
     #    (ped_df_full['Z'] <= z_ground_max)
     #].copy()
     
-    ground = summerPed
+    ground = dfFull
     ground = apply_solar_to_df(ground, shadows)   # shade check at Z~1.5m, no height filter needed
 
     # 2. 10m wind — spatial proxy for pedestrian-level wind exposure
@@ -1617,7 +1440,7 @@ def build_utci_layer(
     #    (ped_df_full['Z'] <= z_wind_max)
     #][['X', 'Y', 'u_mag']].copy()
 
-    wind10m = summer10m
+    wind10m = dfFull
 
     # 3. Spatially join wind to ground points (nearest 10m cell → ground point)
     #    Round XY to nearest metre so the merge is tolerant of small offsets
@@ -1629,7 +1452,7 @@ def build_utci_layer(
         return df
 
     ground  = _round_xy(ground)
-    wind10m = _round_xy(wind10m).rename(columns={'u_mag': 'u_mag_10m'})
+    wind10m = _round_xy(wind10m).rename(columns={'U10_equivalent': 'u_mag_10m'})
 
     merged = ground.merge(
         wind10m[['_gx', '_gy', 'u_mag_10m']],
