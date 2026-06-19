@@ -30,7 +30,7 @@ Z0_MAP = {
     "metro":                     1.2     # Class 4: Skyscrapers/Metropolitan areas
 }
 
-def write_openfoam_case(case_path, extent, x_off, y_off, max_h, terrain, nu, z0, wind_speed, wind_deg, mode='RANS'):
+def write_openfoam_case(case_path, extent, x_off, y_off, max_h, blds, nu, z0, wind_speed, wind_deg, mode='RANS'):
     """
     Consolidated master case writer.
     mode: 'RANS' (Steady simpleFoam) or 'URANS' (Transient incompressibleFluid)
@@ -44,18 +44,17 @@ def write_openfoam_case(case_path, extent, x_off, y_off, max_h, terrain, nu, z0,
         os.makedirs(os.path.join(case_path, folder), exist_ok=True)
 
     # STL Rotation & Export (Shared logic)
-    local_terrain = terrain.copy()
+    local_blds = blds.copy()
     rot = wind_deg - 270
     rot_rad = np.radians(rot)
     rotation_matrix = trimesh.transformations.rotation_matrix(rot_rad, [0, 0, 1])
     # 3. Apply the rotation to your final_model
-    local_terrain.apply_transform(rotation_matrix)
+    local_blds.apply_transform(rotation_matrix)
     
-    local_terrain.update_faces(local_terrain.unique_faces())
-    local_terrain.fix_normals(multibody=True)
+    local_blds.update_faces(local_blds.unique_faces())
+    local_blds.fix_normals(multibody=True)
+    local_blds.export(os.path.join(case_path, "constant/geometry/buildings.obj"))
 
-    local_terrain.export(os.path.join(case_path, "constant/geometry/terrain.obj"))
-    
     # 2. 0/ Directory (Physics)
     write_u_file(case_path, wind_speed, z0_val)
     write_p_file(case_path)
@@ -276,8 +275,8 @@ def write_control_dict(case_path, mode):
             "endTime 200;\n"
             "deltaT 0.05;\n"
             "writeControl adjustableRunTime;\n"
-            "writeInterval 5;\n"  # Writes every 5 seconds of simulation time
-            "purgeWrite 3;\n"      # Keeps only last 3 sets of results
+            "writeInterval 50;\n"  # Writes every 5 seconds of simulation time
+            "purgeWrite 3;\n"       # Keeps only last 3 sets of results
             "adjustTimeStep yes;\n"
             "maxCo 5.0;"
         )
@@ -329,19 +328,6 @@ functions
                 signed          false;
                 topology        proximityRegions; 
                 absProximity    1.8;          
-            }}
-            utciZone
-            {{
-                type            cuttingPlane;
-                planeType       pointAndNormal;
-                pointAndNormalDict
-                {{
-                    point       (0 0 10.0);
-                    normal      (0 0 1);
-                }}
-                signed          false;
-                topology        proximityRegions; 
-                absProximity    11.0;          
             }}
         }}
     }}
@@ -448,10 +434,10 @@ castellatedMeshControls {{
 }}
 snapControls {{ explicitFeatureSnap true; }}
 addLayersControls {{ relativeSizes true; layers {{ "buildings" {{ nSurfaceLayers 2; }} }} expansionRatio 1.2; 
-                                                                                            finalLayerThickness 0.5; 
-                                                                                            minThickness 0.1;}}
+                                                                                          finalLayerThickness 0.5; 
+                                                                                          minThickness 0.1;}}
 meshQualityControls {{ #includeEtc "caseDicts/mesh/generation/meshQualityDict.cfg" }}
-mergeTolerance 1e-6;"""
+"""
     with open(os.path.join(case_path, "system/snappyHexMeshDict"), "w") as f: f.write(content)
 
 def write_mesh_quality_dict(case_path):

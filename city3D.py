@@ -369,7 +369,7 @@ def osm2gdf(data):
     return results
 
 def overpass_to_gdf(query, url="https://overpass-api.de/api/interpreter", geojson=False):
-    """Run an Overpass query and return GeoDataFrame or PyDeck-ready GeoJSON."""
+    """Run an Overpass query and return GeoDataFrameLite or GeoJSON."""
     r = requests.get(url, params={"data": query})
     data = r.json()["elements"]
 
@@ -419,7 +419,7 @@ def overpass_to_gdf(query, url="https://overpass-api.de/api/interpreter", geojso
         return geojson
     else:
         return df
-
+        
 def plot_geometries(df, ax=None, facecolor='none', edgecolor='purple', alpha=0.5):
     if ax is None:
         fig, ax = plt.subplots(figsize=(10,10))
@@ -1279,7 +1279,7 @@ def plot_wind_analysis(ped_df, gdf, center_x_utm, center_y_utm, radius=400, titl
     cbar_ax = fig.add_axes([0.92, 0.15, 0.015, 0.7]) 
     fig.colorbar(cntr, cax=cbar_ax, label='Wind Speed (m/s)')
 
-    plt.suptitle(f'Pedestrian Wind at 1.2m to 1.9m - {title_suffix}', fontsize=16, y=0.98)
+    plt.suptitle(f'Pedestrian Wind at 1.5m - {title_suffix}', fontsize=16, y=0.98)
     
     return fig, (ax1, ax2)
 
@@ -1420,7 +1420,7 @@ def build_utci_layer(
     """
     Physics-correct pipeline:
       - Shade is a ground-level question: is the pedestrian standing in shadow?
-        → classify shade on the 1.2–1.9m slice (actual pedestrian level)
+        → classify shade on the 1.5m slice (actual pedestrian level)
       - Wind at 10m is a CFD sampling artefact, not a physical height.
         → extract u_mag from the 10m slice and join it down to ground points
       - UTCI is then computed at ground level with 10m wind + ground shade
