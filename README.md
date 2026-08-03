@@ -11,7 +11,7 @@
 <!------->
 
 <!--Paper currently under review with the [South African Journal of Geomatics](http://www.sajg.org.za/index.php/sajg/issue/archive)-->
-**License**: Code is MIT; content is CC-BY-SA 4.0. See `NOTICE` for details.
+**License**: Code is [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT); content is [![License: CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/). See [`NOTICE`](https://github.com/AdrianKriger/geo3D/blob/main/NOTICE) for details.
 
 ___
 This repository is available on Zenodo to provide a **permanent, citable record** of the exact code and data used to produce the results for a journal article currently under review. 
