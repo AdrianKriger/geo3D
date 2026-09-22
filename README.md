@@ -19,6 +19,4 @@ ___
 ___
 This repository is available on Zenodo to provide a **permanent, citable record** of the exact code and data used to produce the results for a journal article currently under review. 
 The Digital Object Identifier (DOI) for the specific version **v1.0.1** that corresponds to the publication is:
-
-[![DOI](https://zenodo.org/badge/762940234.svg)](https://doi.org/10.5281/zenodo.17541756)
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17541757.svg)](https://doi.org/10.5281/zenodo.17541757)
