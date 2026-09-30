@@ -371,7 +371,7 @@ def osm2gdf(data):
 def overpass_to_gdf(query, url="https://overpass-api.de/api/interpreter", geojson=False):
     """Run an Overpass query and return GeoDataFrame or GeoJSON."""
     
-    #- define custom, descriptive headers to satisfy the API's security filter
+    # 1. Define custom, descriptive headers to satisfy the API's security filter
     headers = {
         'User-Agent': 'geo3D (https://github.com/AdrianKriger/geo3D)',
         'Accept': 'application/json',
