@@ -557,7 +557,7 @@ def bldHeights(gdf):
         #'id', 
         'osm_id', 'address', 'building', 'building:levels', 'building:use',
         'building:flats', 'building:units', 'beds', 'rooms', 'residential',
-        'amenity', 'social_facility', 'operator', 'building_height', #'roof_height',
+        'amenity', 'social_facility', 'operator', 'operator:type', 'building_height', #'roof_height',
         #'ground_height', 'bottom_bridge_height', 'bottom_roof_height',
         'min_height', 'plus_code', 'footprint', 'geometry'
     ]
