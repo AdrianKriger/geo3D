@@ -35,6 +35,9 @@ from shapely.geometry import Point, LineString, Polygon, MultiPolygon, LinearRin
 from shapely.ops import snap, transform, unary_union
 from shapely.validation import make_valid
 from shapely.affinity import translate, scale
+from scipy.spatial import KDTree
+
+import networkx as nx
 
 import pyproj 
 from pyproj import CRS, Transformer 
@@ -2136,6 +2139,445 @@ def create_maplibre_3Dviz(
                 '<strong>Address:</strong> ' + (p.address || 'N/A') + '<br>' +
                 '<strong>Height:</strong> ' + (p.building_height || 0) + 'm<br>' +
                 '<strong>Plus Code:</strong> ' + (p.plus_code || 'N/A') +
+                '</div>';
+            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
+        }});
+    }});
+</script>
+</body>
+</html>
+"""
+    with open(result_dir, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    return result_dir
+
+
+def build_graph_from_gdf(gdf):
+    """
+    Converts a projected GeoDataFrame of LineStrings into a NetworkX Graph 
+    without external network topological tools.
+    """
+    G = nx.Graph()  # Use nx.DiGraph() if directional routing is required
+    
+    for idx, row in gdf.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+            
+        # Explode MultiLineStrings if present
+        geoms = geom.geoms if isinstance(geom, MultiLineString) else [geom]
+        
+        for g in geoms:
+            coords = list(g.coords)
+            for i in range(len(coords) - 1):
+                u = coords[i]
+                v = coords[i + 1]
+                
+                # Calculate physical edge length in projected units (meters)
+                dx = u[0] - v[0]
+                dy = u[1] - v[1]
+                dist = (dx**2 + dy**2)**0.5
+                
+                # Add nodes with explicit spatial attributes (x, y coordinates)
+                G.add_node(u, x=u[0], y=u[1])
+                G.add_node(v, x=v[0], y=v[1])
+                
+                # Add edge with routing weight and metadata
+                G.add_edge(
+                    u, v, 
+                    weight=dist, 
+                    osm_id=row.get("osm_id"), 
+                    highway=row.get("highway")
+                )
+                
+    return G
+
+def gaussian_decay(distance, cutoff=800):
+    """Gaussian decay function W(d) ranging from 1.0 (0m) to ~0.0 at cutoff."""
+    if distance > cutoff:
+        return 0.0
+    beta = 0.5 * (cutoff / 2)**2
+    return np.exp(-0.5 * (distance / beta)**2)
+
+def compute_supply_network_distances(G, supply_nodes, demand_nodes, cutoff=800):
+    """
+    Computes shortest walking distances starting from SUPPLY nodes outward.
+    Significantly faster when len(supply_nodes) << len(demand_nodes).
+    """
+    matrix = {}
+    demand_set = set(demand_nodes)
+    
+    for s_node in supply_nodes:
+        # Single-source Dijkstra starting from each park node
+        lengths = nx.single_source_dijkstra_path_length(G, s_node, weight="weight", cutoff=cutoff)
+        for d_node, d in lengths.items():
+            if d_node in demand_set:
+                matrix[(d_node, s_node)] = d
+                
+    return matrix
+
+def calculate_e2sfca_geo3d(
+    gdf_pop, 
+    gdf_green_spaces, 
+    G, 
+    pop_col='pop', 
+    park_area_col='area_m2', 
+    cutoff=800
+):
+    """
+    High-performance E2SFCA for GeoDataFrameLite / standard DataFrames.
+    """
+    # -------------------------------------------------------------------
+    # OPTIMIZATION 1: Fast Spatial Node Matching with KDTree O(N log K)
+    # -------------------------------------------------------------------
+    node_list = list(G.nodes())
+    node_coords = np.array(node_list)  # Assumes nodes are (x, y) tuples
+    tree = KDTree(node_coords)
+
+    def snap_geometries_to_nodes(gdf):
+        centroids = gdf["geometry"].apply(lambda g: (g.centroid.x, g.centroid.y) if g else None).dropna()
+        if centroids.empty:
+            return pd.Series(index=gdf.index, dtype=object)
+        
+        coords = np.array(centroids.tolist())
+        _, indices = tree.query(coords)
+        
+        # Map back to original dataframe index
+        return pd.Series([node_list[i] for i in indices], index=centroids.index)
+
+    # 1. Prepare and filter demand data
+    df_res = gdf_pop[gdf_pop[pop_col] > 0].copy()
+    df_res["node"] = snap_geometries_to_nodes(df_res)
+
+    # 2. Prepare supply data
+    df_green = gdf_green_spaces.copy()
+    df_green["node"] = snap_geometries_to_nodes(df_green)
+
+    if park_area_col not in df_green.columns:
+        df_green[park_area_col] = df_green["geometry"].apply(lambda g: g.area if g else 0.0)
+
+    # Aggregate population demand and green space supply by node
+    node_pop = df_res.groupby("node")[pop_col].sum().to_dict()
+    node_parks = df_green.groupby("node")[park_area_col].sum().to_dict()
+
+    demand_nodes = list(node_pop.keys())
+    supply_nodes = list(node_parks.keys())
+
+    # -------------------------------------------------------------------
+    # OPTIMIZATION 2: Reverse Dijkstra Direction (Supply -> Demand)
+    # -------------------------------------------------------------------
+    dist_matrix = compute_supply_network_distances(G, supply_nodes, demand_nodes, cutoff=cutoff)
+
+    # -------------------------------------------------------------------
+    # STEP 1: Calculate Supply-to-Demand Ratio (R_j) for each Park
+    # -------------------------------------------------------------------
+    park_ratios = {}
+    for s_node, supply_size in node_parks.items():
+        weighted_demand = 0.0
+        for d_node in demand_nodes:
+            d = dist_matrix.get((d_node, s_node), None)
+            if d is not None:
+                weighted_demand += node_pop[d_node] * gaussian_decay(d, cutoff=cutoff)
+
+        park_ratios[s_node] = (supply_size / weighted_demand) if weighted_demand > 0 else 0.0
+
+    # -------------------------------------------------------------------
+    # STEP 2: Calculate Accessibility Score (A_i) for each Building
+    # -------------------------------------------------------------------
+    node_accessibility = {}
+    for d_node in demand_nodes:
+        acc_score = 0.0
+        for s_node in supply_nodes:
+            d = dist_matrix.get((d_node, s_node), None)
+            if d is not None:
+                acc_score += park_ratios[s_node] * gaussian_decay(d, cutoff=cutoff)
+
+        node_accessibility[d_node] = acc_score
+
+    # Map scores back to gdf_pop
+    gdf_pop["green_acc_score"] = gdf_pop.index.map(
+        df_res["node"].map(node_accessibility)
+    ).fillna(0.0)
+    #scores = gdf[score_col].fillna(0)
+    # Cap upper bound at the 95th percentile so a single high score doesn't squish the rest
+    max_val = np.percentile(gdf_pop["green_acc_score"][gdf_pop["green_acc_score"] > 0], 95) if len(gdf_pop["green_acc_score"][gdf_pop["green_acc_score"] > 0]) > 0 else gdf_pop["green_acc_score"].max()
+    min_val = gdf_pop["green_acc_score"].min()
+    
+    if max_val > min_val:
+        gdf_pop['green_acc_norm'] = ((gdf_pop["green_acc_score"] - min_val) / (max_val - min_val)).clip(0, 1)
+    else:
+        gdf_pop['green_acc_norm'] = 0.0
+
+    return gdf_pop
+
+def create_maplibre_3DrecViz(
+    result_dir,
+    buildings_gdf,
+    roads_gdf=None,
+    water_gdf=None,
+    green_gdf=None,
+    brt_gdf=None,
+    center=None,
+    zoom=16,
+    offline=False,
+    local_js_path="../data/maplibre-gl.js",
+    local_css_path="../data/maplibre-gl.css",
+    remote_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+):
+    # 1. Determine map center safely
+    if center is None:
+        try:
+            all_geoms = [g for g in buildings_gdf['geometry'] if g is not None]
+            combined = shapely.ops.unary_union(all_geoms)
+            center = [combined.centroid.x, combined.centroid.y]
+        except:
+            center = [0, 0]
+
+    # 2. ROBUST HARVESTING & CULLING
+    def harvest_and_cull(df, columns_to_keep):
+        if df is None or not hasattr(df, 'empty') or df.empty:
+            return {"type": "FeatureCollection", "features": []}
+        
+        existing_cols = [c for c in columns_to_keep if c in df.columns]
+        if 'geometry' not in df.columns:
+            return {"type": "FeatureCollection", "features": []}
+            
+        temp = df[existing_cols + ['geometry']].copy()
+        
+        def truncate_geom(g):
+            if g is None: return None
+            return shapely.wkt.loads(shapely.wkt.dumps(g, rounding_precision=5))
+            
+        temp['geometry'] = temp['geometry'].apply(truncate_geom)
+        temp = temp.fillna("")
+
+        if 'building_height' in temp.columns:
+            temp['building_height'] = pd.to_numeric(temp['building_height'], errors='coerce').fillna(10)
+        
+        features = []
+        for _, row in temp.iterrows():
+            if not row['geometry']: continue
+            feat = {
+                "type": "Feature",
+                "properties": {c: row[c] for c in existing_cols},
+                "geometry": shapely.geometry.mapping(row['geometry'])
+            }
+            features.append(feat)
+            
+        return {"type": "FeatureCollection", "features": features}
+
+    # Harvest Data (CRITICAL FIX: Included 'green_acc_norm')
+    building_data = harvest_and_cull(
+        buildings_gdf, 
+        ['building_height', 'green_acc_score', 'green_acc_norm', 'fill_color', 'osm_id', 'address', 'building', 'plus_code']
+    )
+    road_data = harvest_and_cull(roads_gdf, ['highway'])
+    water_data = harvest_and_cull(water_gdf, ['natural', 'waterway'])
+    green_data = harvest_and_cull(green_gdf, ['leisure', 'landuse', 'name'])
+    brt_data = harvest_and_cull(brt_gdf, ['colour'])
+
+    # 3. Asset Logic
+    if offline:
+        try:
+            with open(local_js_path, 'r', encoding='utf-8') as f:
+                js_content = f"<script>{f.read()}</script>"
+            with open(local_css_path, 'r', encoding='utf-8') as f:
+                css_content = f"<style>{f.read()}</style>"
+        except FileNotFoundError:
+            js_content = '<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>'
+            css_content = '<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />'
+        
+        style_js = json.dumps({
+            "version": 8, "sources": {}, 
+            "layers": [{"id":"bg","type":"background","paint":{"background-color":"#0e0e0e"}}]
+        })
+    else:
+        js_content = '<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>'
+        css_content = '<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />'
+        style_js = f"'{remote_style}'"
+
+    # 4. HTML Template
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>geo3D. 3D City Models for Geography and Sustainable Development Education</title>
+    {css_content}
+    {js_content}
+<style>
+    body {{ margin: 0; padding: 0; }}
+    #map {{ position: absolute; top: 0; bottom: 0; width: 100%; background: #0e0e0e; }}
+    .popup-content {{ font-family: sans-serif; font-size: 12px; line-height: 1.5; color: #333; }}
+    hr {{ border: 0; border-top: 1px solid #eee; margin: 5px 0; }}
+
+    .legend {{
+        position: absolute;
+        bottom: 30px;
+        left: 10px;
+        background: rgba(20, 20, 20, 0.85);
+        padding: 12px 14px;
+        border-radius: 4px;
+        color: white;
+        font-family: sans-serif;
+        font-size: 12px;
+        line-height: 1.4;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }}
+
+    .legend-title {{
+        font-weight: 600;
+        margin-bottom: 8px;
+    }}
+
+    .legend-ramp {{
+        width: 220px;
+        height: 14px;
+        background: linear-gradient(
+            to right,
+            #d73027 0%,
+            #fc8d59 20%,
+            #fee090 40%,
+            #91bfdb 60%,
+            #4575b4 80%,
+            #542788 100%
+        );
+        border-radius: 2px;
+    }}
+
+    .legend-labels {{
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+    }}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="legend">
+    <div class="legend-title">Green-space accessibility</div>
+    <div class="legend-ramp"></div>
+    <div class="legend-labels">
+        <span>Lower</span>
+        <span>Higher</span>
+    </div>
+</div>
+
+<script>
+    const map = new maplibregl.Map({{
+        container: 'map',
+        style: {style_js},
+        center: {json.dumps(center)},
+        zoom: {zoom},
+        pitch: 60,
+        bearing: -10,
+        antialias: true
+    }});
+
+    map.on('load', () => {{
+        map.addControl(new maplibregl.NavigationControl({{ visualizePitch: true }}), 'top-right');
+
+        map.addSource('roads', {{ type: 'geojson', data: {json.dumps(road_data)} }});
+        map.addSource('buildings', {{ type: 'geojson', data: {json.dumps(building_data)} }});
+        map.addSource('water', {{ type: 'geojson', data: {json.dumps(water_data)} }});
+        map.addSource('parks', {{ type: 'geojson', data: {json.dumps(green_data)} }});
+        map.addSource('bus', {{ type: 'geojson', data: {json.dumps(brt_data)} }});
+
+        // Layer: Water
+        map.addLayer({{
+            'id': 'water', 'type': 'fill', 'source': 'water',
+            'paint': {{ 'fill-color': '#01579b', 'fill-opacity': 1 }}
+        }});
+
+        // Layer: Parks & Recreation Grounds
+        map.addLayer({{
+            'id': 'parks', 'type': 'fill', 'source': 'parks',
+            'paint': {{ 'fill-color': '#66bb6a', 'fill-opacity': 0.4 }}
+        }});
+
+        // Layer: Road Hierarchy
+        const roadLayers = [
+            {{ id: 'road-motorway', filter: ['==', 'highway', 'motorway'], color: '#666666', width: [8, 1, 14, 6] }},
+            {{ id: 'road-primary', filter: ['==', 'highway', 'primary'], color: '#8b949e', width: [8, 0.75, 14, 4] }},
+            {{ id: 'road-secondary', filter: ['==', 'highway', 'secondary'], color: '#6e7681', width: [9, 0.5, 14, 3] }},
+            {{ id: 'road-tertiary', filter: ['==', 'highway', 'tertiary'], color: '#5a5f66', width: [10, 0.4, 14, 2.5] }},
+            {{ id: 'road-residential', filter: ['==', 'highway', 'residential'], color: '#444c56', width: [11, 0.3, 16, 2] }},
+            {{ id: 'road-service', filter: ['in', 'highway', 'service', 'track', 'minor', 'motorway_link'], color: '#363b42', width: [12, 0.25, 16, 1] }}
+        ];
+
+        roadLayers.forEach(layer => {{
+            map.addLayer({{
+                'id': layer.id, 'type': 'line', 'source': 'roads',
+                'filter': layer.filter,
+                'paint': {{
+                    'line-color': layer.color,
+                    'line-width': ['interpolate', ['linear'], ['zoom'], ...layer.width]
+                }}
+            }});
+        }});
+
+        // Bus Routes
+        map.addLayer({{
+            id: 'bus-layer',
+            type: 'line',
+            source: 'bus',
+            layout: {{ 'line-join': 'round', 'line-cap': 'round' }},
+            paint: {{
+                'line-color': [
+                    'case',
+                    ['has', 'colour'],
+                    ['rgb', ['at', 0, ['get', 'colour']], ['at', 1, ['get', 'colour']], ['at', 2, ['get', 'colour']]],
+                    '#FF4500'
+                ],
+                'line-width': 3
+            }}
+        }});
+
+        // Layer: 3D Buildings - Dynamic Extrusion Color via Normalized Accessibility
+        map.addLayer({{
+            'id': '3d-buildings', 'type': 'fill-extrusion', 'source': 'buildings',
+            'paint': {{
+                'fill-extrusion-color': [
+                    'interpolate',
+                    ['linear'],
+                    ['coalesce', ['to-number', ['get', 'green_acc_norm']], 0],
+                    0.00, '#d73027',
+                    0.20, '#fc8d59',
+                    0.40, '#fee090',
+                    0.60, '#91bfdb',
+                    0.80, '#4575b4',
+                    1.00, '#542788'
+                ],
+                'fill-extrusion-height': ['coalesce', ['to-number', ['get', 'building_height']], 10],
+                'fill-extrusion-opacity': 0.6
+            }}
+        }});
+
+        // Popup Logic: 3D Buildings
+        map.on('click', '3d-buildings', (e) => {{
+            const p = e.features[0].properties;
+            const score = p.green_acc_score ? Number(p.green_acc_score).toFixed(5) : '0.00000';
+            const normScore = p.green_acc_norm ? (Number(p.green_acc_norm) * 100).toFixed(1) : '0.0';
+            
+            const content = '<div class="popup-content">' +
+                '<strong>Building:</strong> ' + (p.building || 'N/A') + '<br><hr>' +
+                '<strong>Address:</strong> ' + (p.address || 'N/A') + '<br>' +
+                '<strong>Height:</strong> ' + (p.building_height || 0) + 'm<br>' +
+                '<strong>Access Index:</strong> ' + normScore + '%<br>' +
+                '<strong>Raw E2SFCA Score:</strong> <code>' + score + '</code><br>' +
+                '<strong>Plus Code:</strong> ' + (p.plus_code || 'N/A') +
+                '</div>';
+            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
+        }});
+
+        // Popup Logic: Green Spaces
+        map.on('click', 'parks', (e) => {{
+            const p = e.features[0].properties;
+            const type = p.leisure || p.landuse || 'Green Space';
+            const content = '<div class="popup-content">' +
+                '<strong>Name:</strong> ' + (p.name || 'Unnamed Space') + '<br><hr>' +
+                '<strong>Type:</strong> ' + type +
                 '</div>';
             new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
         }});
