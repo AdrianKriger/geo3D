@@ -2369,7 +2369,7 @@ def create_maplibre_3DrecViz(
     # Harvest Data (CRITICAL FIX: Included 'green_acc_norm')
     building_data = harvest_and_cull(
         buildings_gdf, 
-        ['building_height', 'green_acc_score', 'green_acc_norm', 'fill_color', 'osm_id', 'address', 'building', 'plus_code']
+        ['building_height', 'pop', 'green_acc_score', 'green_acc_norm', 'fill_color', 'osm_id', 'address', 'building', 'plus_code']
     )
     road_data = harvest_and_cull(roads_gdf, ['highway'])
     water_data = harvest_and_cull(water_gdf, ['natural', 'waterway'])
@@ -2564,6 +2564,7 @@ def create_maplibre_3DrecViz(
                 '<strong>Building:</strong> ' + (p.building || 'N/A') + '<br><hr>' +
                 '<strong>Address:</strong> ' + (p.address || 'N/A') + '<br>' +
                 '<strong>Height:</strong> ' + (p.building_height || 0) + 'm<br>' +
+                '<strong>Population:</strong> ' + (p.pop || 0) + '<br>' +
                 '<strong>Access Index:</strong> ' + normScore + '%<br>' +
                 '<strong>Raw E2SFCA Score:</strong> <code>' + score + '</code><br>' +
                 '<strong>Plus Code:</strong> ' + (p.plus_code || 'N/A') +
