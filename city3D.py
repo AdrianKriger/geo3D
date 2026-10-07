@@ -2222,55 +2222,74 @@ def calculate_e2sfca_geo3d(
     G, 
     pop_col='pop', 
     park_area_col='area_m2', 
-    cutoff=800
+    cutoff=800,
+    park_name_col='name'  # or 'osm_id'
 ):
     """
-    High-performance E2SFCA for GeoDataFrameLite / standard DataFrames.
+    E2SFCA function that calculates accessibility scores and attaches the 
+    nearest green space destination node and green space attributes to each building.
     """
-    # -------------------------------------------------------------------
-    # OPTIMIZATION 1: Fast Spatial Node Matching with KDTree O(N log K)
-    # -------------------------------------------------------------------
-    node_list = list(G.nodes())
-    node_coords = np.array(node_list)  # Assumes nodes are (x, y) tuples
+    # 1. Filter to main connected component
+    if G.is_directed():
+        largest_cc = max(nx.strongly_connected_components(G), key=len)
+    else:
+        largest_cc = max(nx.connected_components(G), key=len)
+
+    G_main = G.subgraph(largest_cc).copy()
+
+    # 2. Build KDTree exclusively from G_main nodes
+    node_list = list(G_main.nodes())
+    node_coords = np.array(node_list)
     tree = KDTree(node_coords)
 
     def snap_geometries_to_nodes(gdf):
         centroids = gdf["geometry"].apply(lambda g: (g.centroid.x, g.centroid.y) if g else None).dropna()
         if centroids.empty:
             return pd.Series(index=gdf.index, dtype=object)
-        
         coords = np.array(centroids.tolist())
         _, indices = tree.query(coords)
-        
-        # Map back to original dataframe index
         return pd.Series([node_list[i] for i in indices], index=centroids.index)
 
-    # 1. Prepare and filter demand data
+    # 3. Snap building and green space geometries
     df_res = gdf_pop[gdf_pop[pop_col] > 0].copy()
     df_res["node"] = snap_geometries_to_nodes(df_res)
 
-    # 2. Prepare supply data
     df_green = gdf_green_spaces.copy()
     df_green["node"] = snap_geometries_to_nodes(df_green)
 
     if park_area_col not in df_green.columns:
         df_green[park_area_col] = df_green["geometry"].apply(lambda g: g.area if g else 0.0)
 
-    # Aggregate population demand and green space supply by node
-    node_pop = df_res.groupby("node")[pop_col].sum().to_dict()
+    # Map green space attributes by node
     node_parks = df_green.groupby("node")[park_area_col].sum().to_dict()
+    
+    # Create lookup map from green space node -> green space name/ID
+    if park_name_col in df_green.columns:
+        node_to_park_name = df_green.drop_duplicates(subset=["node"]).set_index("node")[park_name_col].to_dict()
+    else:
+        node_to_park_name = {}
 
-    demand_nodes = list(node_pop.keys())
+    demand_nodes = list(df_res["node"].unique())
     supply_nodes = list(node_parks.keys())
 
-    # -------------------------------------------------------------------
-    # OPTIMIZATION 2: Reverse Dijkstra Direction (Supply -> Demand)
-    # -------------------------------------------------------------------
-    dist_matrix = compute_supply_network_distances(G, supply_nodes, demand_nodes, cutoff=cutoff)
+    # 4. Compute network distance matrix (Supply <-> Demand)
+    dist_matrix = compute_supply_network_distances(G_main, supply_nodes, demand_nodes, cutoff=cutoff)
 
-    # -------------------------------------------------------------------
-    # STEP 1: Calculate Supply-to-Demand Ratio (R_j) for each Park
-    # -------------------------------------------------------------------
+    # 5. Identify Nearest Destination Node for Each Building Node
+    nearest_dest_per_node = {}
+    for d_node in demand_nodes:
+        min_dist = float('inf')
+        nearest_s_node = None
+        for s_node in supply_nodes:
+            d = dist_matrix.get((d_node, s_node), None)
+            if d is not None and d < min_dist:
+                min_dist = d
+                nearest_s_node = s_node
+        nearest_dest_per_node[d_node] = nearest_s_node
+
+    # 6. Run E2SFCA Accessibility Score Step 1 & 2
+    node_pop = df_res.groupby("node")[pop_col].sum().to_dict()
+    
     park_ratios = {}
     for s_node, supply_size in node_parks.items():
         weighted_demand = 0.0
@@ -2278,12 +2297,8 @@ def calculate_e2sfca_geo3d(
             d = dist_matrix.get((d_node, s_node), None)
             if d is not None:
                 weighted_demand += node_pop[d_node] * gaussian_decay(d, cutoff=cutoff)
-
         park_ratios[s_node] = (supply_size / weighted_demand) if weighted_demand > 0 else 0.0
 
-    # -------------------------------------------------------------------
-    # STEP 2: Calculate Accessibility Score (A_i) for each Building
-    # -------------------------------------------------------------------
     node_accessibility = {}
     for d_node in demand_nodes:
         acc_score = 0.0
@@ -2291,15 +2306,17 @@ def calculate_e2sfca_geo3d(
             d = dist_matrix.get((d_node, s_node), None)
             if d is not None:
                 acc_score += park_ratios[s_node] * gaussian_decay(d, cutoff=cutoff)
-
         node_accessibility[d_node] = acc_score
 
-    # Map scores back to gdf_pop
-    gdf_pop["green_acc_score"] = gdf_pop.index.map(
-        df_res["node"].map(node_accessibility)
-    ).fillna(0.0)
-    #scores = gdf[score_col].fillna(0)
-    # Cap upper bound at the 95th percentile so a single high score doesn't squish the rest
+    # 7. Attach Results back to building DataFrame
+    gdf_pop["node"] = snap_geometries_to_nodes(gdf_pop)
+    gdf_pop["green_acc_score"] = gdf_pop["node"].map(node_accessibility).fillna(0.0)
+    gdf_pop["nearest_destination_node"] = gdf_pop["node"].map(nearest_dest_per_node)
+    
+    if node_to_park_name:
+        gdf_pop["nearest_green_space_name"] = gdf_pop["nearest_destination_node"].map(node_to_park_name)
+
+    # normalize. Cap upper bound at the 95th percentile so a single high score doesn't squish the rest
     max_val = np.percentile(gdf_pop["green_acc_score"][gdf_pop["green_acc_score"] > 0], 95) if len(gdf_pop["green_acc_score"][gdf_pop["green_acc_score"] > 0]) > 0 else gdf_pop["green_acc_score"].max()
     min_val = gdf_pop["green_acc_score"].min()
     
