@@ -154,6 +154,36 @@ return maplibregl$1;
                 '</div>';
             new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
         });
+                // Popup Logic - bus rapid transit
+        map.on('click', 'bus-layer', (e) => {
+            const p = e.features[0].properties;
+            const content = '<div class="popup-content">' +
+                '<strong>Route Name:</strong> ' + (p.name || 'N/A') + '<br><hr>' +
+                '<strong>Ref:</strong> ' + (p.ref || 'N/A') + '<br>' +
+                '<strong>Operator:</strong> ' + (p.operator || 'N/A') + '<br>' +
+                '<strong>Route Type:</strong> ' + (p.route || 'N/A') + '<br>' +
+                '<strong>From:</strong> ' + (p.from || 'N/A') + '<br>' +
+                '<strong>To:</strong> ' + (p.to || 'N/A') +
+                '</div>';
+            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
+        });
+        // Popup Logic: Green Spaces
+        map.on('click', 'parks', (e) => {
+            const p = e.features[0].properties;
+            const type = p.leisure || p.landuse || 'Green Space';
+            const content = '<div class="popup-content">' +
+                '<strong>Name:</strong> ' + (p.name || 'Unnamed Space') + '<br><hr>' +
+                '<strong>Type:</strong> ' + type +
+                '</div>';
+            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
+        });
+
+        map.on('mouseenter', '3d-buildings', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', '3d-buildings', () => { map.getCanvas().style.cursor = ''; });
+        map.on('mouseenter', 'bus-layer', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'bus-layer', () => { map.getCanvas().style.cursor = ''; });
+        map.on('mouseenter', '3d-buildings', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', '3d-buildings', () => { map.getCanvas().style.cursor = ''; });
     });
 </script>
 </body>

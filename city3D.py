@@ -2010,7 +2010,9 @@ def create_maplibre_3Dviz(
     road_data = harvest_and_cull(roads_gdf, ['highway'])
     water_data = harvest_and_cull(water_gdf, ['natural', 'waterway'])
     green_data = harvest_and_cull(green_gdf, ['leisure', 'name'])
-    brt_data = harvest_and_cull(brt_gdf, ['colour'])
+    #brt_data = harvest_and_cull(brt_gdf, ['colour'])
+    brt_data = harvest_and_cull(brt_gdf, ['colour', 'name', 'operator', 'ref', 'route', 'from', 'to'])
+
 
     # 3. Asset Logic
     if offline:
@@ -2142,6 +2144,36 @@ def create_maplibre_3Dviz(
                 '</div>';
             new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
         }});
+                // Popup Logic - bus rapid transit
+        map.on('click', 'bus-layer', (e) => {{
+            const p = e.features[0].properties;
+            const content = '<div class="popup-content">' +
+                '<strong>Route Name:</strong> ' + (p.name || 'N/A') + '<br><hr>' +
+                '<strong>Ref:</strong> ' + (p.ref || 'N/A') + '<br>' +
+                '<strong>Operator:</strong> ' + (p.operator || 'N/A') + '<br>' +
+                '<strong>Route Type:</strong> ' + (p.route || 'N/A') + '<br>' +
+                '<strong>From:</strong> ' + (p.from || 'N/A') + '<br>' +
+                '<strong>To:</strong> ' + (p.to || 'N/A') +
+                '</div>';
+            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
+        }});
+        // Popup Logic: Green Spaces
+        map.on('click', 'parks', (e) => {{
+            const p = e.features[0].properties;
+            const type = p.leisure || p.landuse || 'Green Space';
+            const content = '<div class="popup-content">' +
+                '<strong>Name:</strong> ' + (p.name || 'Unnamed Space') + '<br><hr>' +
+                '<strong>Type:</strong> ' + type +
+                '</div>';
+            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(content).addTo(map);
+        }});
+
+        map.on('mouseenter', '3d-buildings', () => {{ map.getCanvas().style.cursor = 'pointer'; }});
+        map.on('mouseleave', '3d-buildings', () => {{ map.getCanvas().style.cursor = ''; }});
+        map.on('mouseenter', 'bus-layer', () => {{ map.getCanvas().style.cursor = 'pointer'; }});
+        map.on('mouseleave', 'bus-layer', () => {{ map.getCanvas().style.cursor = ''; }});
+        map.on('mouseenter', '3d-buildings', () => {{ map.getCanvas().style.cursor = 'pointer'; }});
+        map.on('mouseleave', '3d-buildings', () => {{ map.getCanvas().style.cursor = ''; }});
     }});
 </script>
 </body>
@@ -2150,7 +2182,6 @@ def create_maplibre_3Dviz(
     with open(result_dir, "w", encoding="utf-8") as f:
         f.write(html_content)
     return result_dir
-
 
 def build_graph_from_gdf(gdf):
     """
@@ -2220,6 +2251,7 @@ def calculate_e2sfca_geo3d(
     gdf_pop, 
     gdf_green_spaces, 
     G, 
+    gdf_gates=None,
     pop_col='pop', 
     park_area_col='area_m2', 
     cutoff=800,
@@ -2228,6 +2260,9 @@ def calculate_e2sfca_geo3d(
     """
     E2SFCA function that calculates accessibility scores and attaches the 
     nearest green space destination node and green space attributes to each building.
+    
+    If `gdf_gates` is provided, each park will first attempt to snap using its 
+    associated entrance/gate points before falling back to its centroid.
     """
     # 1. Filter to main connected component
     if G.is_directed():
@@ -2242,40 +2277,76 @@ def calculate_e2sfca_geo3d(
     node_coords = np.array(node_list)
     tree = KDTree(node_coords)
 
+    def snap_coords_to_nodes(coords_list):
+        """Helper to snap a list of (x, y) tuples to the nearest network node."""
+        if not coords_list:
+            return []
+        coords_arr = np.array(coords_list)
+        _, indices = tree.query(coords_arr)
+        return [node_list[i] for i in indices]
+
     def snap_geometries_to_nodes(gdf):
         centroids = gdf["geometry"].apply(lambda g: (g.centroid.x, g.centroid.y) if g else None).dropna()
         if centroids.empty:
             return pd.Series(index=gdf.index, dtype=object)
-        coords = np.array(centroids.tolist())
-        _, indices = tree.query(coords)
-        return pd.Series([node_list[i] for i in indices], index=centroids.index)
+        snapped_nodes = snap_coords_to_nodes(centroids.tolist())
+        return pd.Series(snapped_nodes, index=centroids.index)
 
-    # 3. Snap building and green space geometries
+    # 3. Snap buildings to network nodes
     df_res = gdf_pop[gdf_pop[pop_col] > 0].copy()
     df_res["node"] = snap_geometries_to_nodes(df_res)
 
+    # 4. Snap Green Spaces (Gates First, Centroid Fallback)
     df_green = gdf_green_spaces.copy()
-    df_green["node"] = snap_geometries_to_nodes(df_green)
-
     if park_area_col not in df_green.columns:
         df_green[park_area_col] = df_green["geometry"].apply(lambda g: g.area if g else 0.0)
 
-    # Map green space attributes by node
-    node_parks = df_green.groupby("node")[park_area_col].sum().to_dict()
-    
-    # Create lookup map from green space node -> green space name/ID
-    if park_name_col in df_green.columns:
-        node_to_park_name = df_green.drop_duplicates(subset=["node"]).set_index("node")[park_name_col].to_dict()
-    else:
-        node_to_park_name = {}
+    # Dictionary mapping supply_node -> combined park area
+    node_parks = {}
+    node_to_park_name = {}
+
+    for idx, park in df_green.iterrows():
+        park_geom = park.geometry
+        if park_geom is None or park_geom.is_empty:
+            continue
+            
+        area = park.get(park_area_col, 0.0)
+        p_name = park.get(park_name_col, f"Park_{idx}")
+
+        snapped_gate_nodes = []
+
+        # Step 4a: Check for matching entrance/gate points within or near the park boundary
+        if gdf_gates is not None and not gdf_gates.empty:
+            # Find gates contained within or intersecting the park (with a 2m buffer margin)
+            park_buffered = park_geom.buffer(2.0) if hasattr(park_geom, 'buffer') else park_geom
+            matching_gates = gdf_gates[gdf_gates.geometry.apply(lambda g: park_buffered.intersects(g) if g else False)]
+
+            if not matching_gates.empty:
+                gate_coords = matching_gates.geometry.apply(lambda g: (g.x, g.y) if g else None).dropna().tolist()
+                if gate_coords:
+                    snapped_gate_nodes = snap_coords_to_nodes(gate_coords)
+                    print(snapped_gate_nodes)
+
+        # Step 4b: Fallback to park centroid if no explicit gates were found
+        if not snapped_gate_nodes:
+            centroid_coord = [(park_geom.centroid.x, park_geom.centroid.y)]
+            snapped_gate_nodes = snap_coords_to_nodes(centroid_coord)
+
+        # Associate the park's supply capacity and name to all identified entry nodes
+        # If multiple gates exist for one park, split capacity across gates or assign to each entry
+        gate_count = len(snapped_gate_nodes)
+        #print('gate count', gate_count)
+        for s_node in set(snapped_gate_nodes):
+            node_parks[s_node] = node_parks.get(s_node, 0.0) + (area / gate_count)
+            node_to_park_name[s_node] = p_name
 
     demand_nodes = list(df_res["node"].unique())
     supply_nodes = list(node_parks.keys())
 
-    # 4. Compute network distance matrix (Supply <-> Demand)
+    # 5. Compute network distance matrix (Supply <-> Demand)
     dist_matrix = compute_supply_network_distances(G_main, supply_nodes, demand_nodes, cutoff=cutoff)
 
-    # 5. Identify Nearest Destination Node for Each Building Node
+    # 6. Identify Nearest Destination Node for Each Building Node
     nearest_dest_per_node = {}
     for d_node in demand_nodes:
         min_dist = float('inf')
@@ -2287,7 +2358,7 @@ def calculate_e2sfca_geo3d(
                 nearest_s_node = s_node
         nearest_dest_per_node[d_node] = nearest_s_node
 
-    # 6. Run E2SFCA Accessibility Score Step 1 & 2
+    # 7. Run E2SFCA Accessibility Score Step 1 & 2
     node_pop = df_res.groupby("node")[pop_col].sum().to_dict()
     
     park_ratios = {}
@@ -2308,7 +2379,7 @@ def calculate_e2sfca_geo3d(
                 acc_score += park_ratios[s_node] * gaussian_decay(d, cutoff=cutoff)
         node_accessibility[d_node] = acc_score
 
-    # 7. Attach Results back to building DataFrame
+    # 8. Attach Results back to building DataFrame
     gdf_pop["node"] = snap_geometries_to_nodes(gdf_pop)
     gdf_pop["green_acc_score"] = gdf_pop["node"].map(node_accessibility).fillna(0.0)
     gdf_pop["nearest_destination_node"] = gdf_pop["node"].map(nearest_dest_per_node)
@@ -2316,14 +2387,17 @@ def calculate_e2sfca_geo3d(
     if node_to_park_name:
         gdf_pop["nearest_green_space_name"] = gdf_pop["nearest_destination_node"].map(node_to_park_name)
 
-    # normalize. Cap upper bound at the 95th percentile so a single high score doesn't squish the rest
-    max_val = np.percentile(gdf_pop["green_acc_score"][gdf_pop["green_acc_score"] > 0], 95) if len(gdf_pop["green_acc_score"][gdf_pop["green_acc_score"] > 0]) > 0 else gdf_pop["green_acc_score"].max()
-    min_val = gdf_pop["green_acc_score"].min()
-    
-    if max_val > min_val:
-        gdf_pop['green_acc_norm'] = ((gdf_pop["green_acc_score"] - min_val) / (max_val - min_val)).clip(0, 1)
+    # Normalize. Cap upper bound at 95th percentile
+    # Zero-anchored scaling to 95th percentile upper bound
+    scores = gdf_pop["green_acc_score"].fillna(0.0)
+    pos_scores = scores[scores > 0]
+
+    if len(pos_scores) > 0:
+        p95 = np.percentile(pos_scores, 95)
+        max_limit = p95 if p95 > 0 else pos_scores.max()
+        gdf_pop["green_acc_norm"] = (scores / max_limit).clip(0.0, 1.0)
     else:
-        gdf_pop['green_acc_norm'] = 0.0
+        gdf_pop["green_acc_norm"] = 0.0
 
     return gdf_pop
 
