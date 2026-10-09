@@ -2344,7 +2344,6 @@ def calculate_e2sfca_geo3d(
                 gate_coords = matching_gates.geometry.apply(lambda g: (g.x, g.y) if g else None).dropna().tolist()
                 if gate_coords:
                     snapped_gate_nodes = snap_coords_to_nodes(gate_coords)
-                    print(snapped_gate_nodes)
 
         # Step 4b: Fallback to park centroid if no explicit gates were found
         if not snapped_gate_nodes:
