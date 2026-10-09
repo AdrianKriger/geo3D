@@ -2091,7 +2091,7 @@ def create_maplibre_3Dviz(
             {{ id: 'road-primary', filter: ['==', 'highway', 'primary'], color: '#8b949e', width: [8, 0.75, 14, 4] }},
             {{ id: 'road-secondary', filter: ['==', 'highway', 'secondary'], color: '#6e7681', width: [9, 0.5, 14, 3] }},
             {{ id: 'road-tertiary', filter: ['==', 'highway', 'tertiary'], color: '#5a5f66', width: [10, 0.4, 14, 2.5] }},
-            {{ id: 'road-residential', filter: ['==', 'highway', 'residential'], color: '#444c56', width: [11, 0.3, 16, 2] }},
+            {{ id: 'road-residential', filter: ['in', 'highway', 'residential', 'unclassified'], color: '#444c56', width: [11, 0.3, 16, 2] }},
             {{ id: 'road-service', filter: ['in', 'highway', 'service', 'track', 'minor', 'motorway_link'], color: '#363b42', width: [12, 0.25, 16, 1] }}
         ];
 
@@ -2185,42 +2185,61 @@ def create_maplibre_3Dviz(
 
 def build_graph_from_gdf(gdf):
     """
-    Converts a projected GeoDataFrame of LineStrings into a NetworkX Graph 
-    without external network topological tools.
+    Converts a GeoDataFrame of geometries (LineStrings, MultiLineStrings, Polygons, 
+    and MultiPolygons) into a noded NetworkX Graph, handling Overpass Turbo 
+    area geometries without throwing NotImplementedError.
     """
-    G = nx.Graph()  # Use nx.DiGraph() if directional routing is required
+    G = nx.Graph()
+    raw_lines = []
     
+    # 1. Standardize all geometries into linear elements
     for idx, row in gdf.iterrows():
         geom = row.geometry
         if geom is None or geom.is_empty:
             continue
             
-        # Explode MultiLineStrings if present
-        geoms = geom.geoms if isinstance(geom, MultiLineString) else [geom]
-        
-        for g in geoms:
-            coords = list(g.coords)
-            for i in range(len(coords) - 1):
-                u = coords[i]
-                v = coords[i + 1]
+        if isinstance(geom, LineString):
+            raw_lines.append(geom)
+        elif isinstance(geom, MultiLineString):
+            raw_lines.extend(list(geom.geoms))
+        elif isinstance(geom, Polygon):
+            # Extract exterior boundary ring of polygon highway areas/plazas
+            raw_lines.append(geom.exterior)
+        elif isinstance(geom, MultiPolygon):
+            for poly in geom.geoms:
+                raw_lines.append(poly.exterior)
+
+    if not raw_lines:
+        return G
+
+    # 2. Node the network (splits intersecting LineStrings into connected junctions)
+    noded = unary_union(raw_lines)
+    
+    if isinstance(noded, LineString):
+        noded_lines = [noded]
+    elif isinstance(noded, MultiLineString):
+        noded_lines = list(noded.geoms)
+    else:
+        noded_lines = []
+
+    # 3. Add noded edges and vertices to NetworkX
+    for line in noded_lines:
+        coords = list(line.coords)
+        for i in range(len(coords) - 1):
+            u = coords[i]
+            v = coords[i + 1]
+            
+            dx = u[0] - v[0]
+            dy = u[1] - v[1]
+            dist = (dx**2 + dy**2)**0.5
+            
+            if dist == 0:
+                continue
                 
-                # Calculate physical edge length in projected units (meters)
-                dx = u[0] - v[0]
-                dy = u[1] - v[1]
-                dist = (dx**2 + dy**2)**0.5
-                
-                # Add nodes with explicit spatial attributes (x, y coordinates)
-                G.add_node(u, x=u[0], y=u[1])
-                G.add_node(v, x=v[0], y=v[1])
-                
-                # Add edge with routing weight and metadata
-                G.add_edge(
-                    u, v, 
-                    weight=dist, 
-                    osm_id=row.get("osm_id"), 
-                    highway=row.get("highway")
-                )
-                
+            G.add_node(u, x=u[0], y=u[1])
+            G.add_node(v, x=v[0], y=v[1])
+            G.add_edge(u, v, weight=dist)
+
     return G
 
 def gaussian_decay(distance, cutoff=800):
@@ -2593,7 +2612,7 @@ def create_maplibre_3DrecViz(
             {{ id: 'road-primary', filter: ['==', 'highway', 'primary'], color: '#8b949e', width: [8, 0.75, 14, 4] }},
             {{ id: 'road-secondary', filter: ['==', 'highway', 'secondary'], color: '#6e7681', width: [9, 0.5, 14, 3] }},
             {{ id: 'road-tertiary', filter: ['==', 'highway', 'tertiary'], color: '#5a5f66', width: [10, 0.4, 14, 2.5] }},
-            {{ id: 'road-residential', filter: ['==', 'highway', 'residential'], color: '#444c56', width: [11, 0.3, 16, 2] }},
+            {{ id: 'road-residential', filter: ['in', 'highway', 'residential', 'unclassified'], color: '#444c56', width: [11, 0.3, 16, 2] }},
             {{ id: 'road-service', filter: ['in', 'highway', 'service', 'track', 'minor', 'motorway_link'], color: '#363b42', width: [12, 0.25, 16, 1] }}
         ];
 
