@@ -2366,15 +2366,48 @@ def calculate_e2sfca_geo3d(
 
     # 6. Identify Nearest Destination Node for Each Building Node
     nearest_dest_per_node = {}
+    all_accessible_parks_per_node = {}
+    
+    #for d_node in demand_nodes:
+    #    accessible_list = []
+    #    min_dist = float('inf')
+    #    nearest_s_node = None
+        
+    #    for s_node in supply_nodes:
+    #        d = dist_matrix.get((d_node, s_node), None)
+    #        park_name = node_to_park_name.get(s_node, "Unnamed Park")
+    #            accessible_list.append({
+    #                "name": park_name,
+    #                "distance_m": round(d, 1)
+    #            })
+    #        if d is not None and d < min_dist:
+    #            min_dist = d
+    #            nearest_s_node = s_node
+    #    nearest_dest_per_node[d_node] = nearest_s_node
+        
     for d_node in demand_nodes:
+        accessible_list = []
         min_dist = float('inf')
         nearest_s_node = None
+        
         for s_node in supply_nodes:
             d = dist_matrix.get((d_node, s_node), None)
-            if d is not None and d < min_dist:
-                min_dist = d
-                nearest_s_node = s_node
+            if d is not None and d <= cutoff:
+                park_name = node_to_park_name.get(s_node, "Unnamed Park")
+                accessible_list.append({
+                    "name": park_name,
+                    "distance_m": round(d, 1)
+                })
+                
+                # Track absolute closest for UI primary label
+                if d < min_dist:
+                    min_dist = d
+                    nearest_s_node = s_node
+                    
+        # Sort accessible parks by walking distance (closest first)
+        accessible_list = sorted(accessible_list, key=lambda x: x["distance_m"])
         nearest_dest_per_node[d_node] = nearest_s_node
+        all_accessible_parks_per_node[d_node] = accessible_list
 
     # 7. Run E2SFCA Accessibility Score Step 1 & 2
     node_pop = df_res.groupby("node")[pop_col].sum().to_dict()
@@ -2401,6 +2434,11 @@ def calculate_e2sfca_geo3d(
     gdf_pop["node"] = snap_geometries_to_nodes(gdf_pop)
     gdf_pop["green_acc_score"] = gdf_pop["node"].map(node_accessibility).fillna(0.0)
     gdf_pop["nearest_destination_node"] = gdf_pop["node"].map(nearest_dest_per_node)
+
+    # Store full list of accessible parks (serialized to JSON string for GeoJSON compatibility)
+    gdf_pop["accessible_parks_json"] = gdf_pop["node"].map(
+        lambda n: json.dumps(all_accessible_parks_per_node.get(n, []))
+    )
     
     if node_to_park_name:
         gdf_pop["nearest_green_space_name"] = gdf_pop["nearest_destination_node"].map(node_to_park_name)
@@ -2475,7 +2513,7 @@ def create_maplibre_3DrecViz(
             
         return {"type": "FeatureCollection", "features": features}
 
-    # Harvest Data (CRITICAL FIX: Included 'green_acc_norm')
+    # Harvest Data 
     building_data = harvest_and_cull(
         buildings_gdf, 
         ['building_height', 'pop', 'green_acc_score', 'green_acc_norm', 'fill_color', 'osm_id', 'address', 'building', 'plus_code']
